@@ -19,6 +19,8 @@ Choose a group and one command:
 
 Once a gesture is complete the tool returns to Inspect; the command stays active. Paused groups can be commanded before advancing with Run or Step. Arrived agents remain living and collidable; a new command reactivates them. Terminated agents remain markers and no longer obstruct others.
 
+Each living agent has a circular outline showing its actual collision radius at the current zoom. Its directional icon keeps a fixed screen size for visibility. Select an agent to see its body radius in metres in the inspector; zoom in if the outline is too small to distinguish.
+
 ## Objects and field controls
 
 For **Rectangle [O]**, drag the horizontal width and release, click a height, then rotate and click to commit. Repeat to add more. Inspect an existing rectangle to resize it using exact fields or drag its round rotation handle. Obstacle editing is atomic; the final pose cannot touch a living agent or active target. Intermediate poses during rotation are not simulated. **Clear objects** removes every rectangle and all wind/noise fields.

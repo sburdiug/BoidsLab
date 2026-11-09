@@ -1,5 +1,5 @@
 use super::{
-    ARRIVED, App, BG, DEAD, FrameContext, MUTED, Marker, SELECTED, Tool,
+    ARRIVED, App, BG, DEAD, FrameContext, MUTED, Marker, SELECTED, TEXT, Tool,
     camera::{screen_point, world_point},
     glyphs::{arrow, draw_agent},
     objects::object_outline,
@@ -148,6 +148,10 @@ pub(super) fn scene(
                 draw_line(p.x - 5.0, p.y - 5.0, p.x + 5.0, p.y + 5.0, 2.5, DEAD);
                 draw_line(p.x - 5.0, p.y + 5.0, p.x + 5.0, p.y - 5.0, 2.5, DEAD);
             }
+        }
+        if agent.state() != AgentState::Terminated {
+            let radius = (world.agent_config(id).body_radius * zoom) as f32;
+            draw_circle_lines(p.x, p.y, radius, 1.0, TEXT);
         }
         if selected_group == Some(agent.group_id()) && world.groups().len() > 1 {
             draw_circle_lines(p.x, p.y, 13.0, 1.5, SELECTED);

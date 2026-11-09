@@ -77,6 +77,13 @@ pub(super) fn inspector(world: &Simulation, selected: Option<usize>, x: f32) {
             17.0,
             TEXT,
         );
+        label(
+            &format!("Body radius {:.3} m", world.agent_config(id).body_radius),
+            x + 16.0,
+            344.0,
+            17.0,
+            TEXT,
+        );
         if let Some(route) = world.group(a.group_id()).and_then(|g| g.route()) {
             label(
                 &format!(
