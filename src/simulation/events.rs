@@ -40,7 +40,7 @@ pub enum EventKind {
         to: AgentState,
     },
     SceneChanged {
-        obstacle: Option<Rectangle>,
+        obstacles: Vec<Rectangle>,
         wind: Vec<WindZone>,
         noise: Vec<NoiseZone>,
     },
@@ -57,7 +57,7 @@ impl Simulation {
     }
     pub(super) fn record_scene(&mut self) {
         self.record(EventKind::SceneChanged {
-            obstacle: self.obstacle,
+            obstacles: self.obstacles.clone(),
             wind: self.wind_zones.clone(),
             noise: self.noise_zones.clone(),
         });

@@ -73,8 +73,7 @@ fn resolve_pairs(
             if agent.state == AgentState::Moving
                 && norm(agent.drift) <= config.speed
                 && agent.settled_time >= 0.3
-                && norm(agent.velocity()) <= config.max_braking * config.dt
-                && norm(agent.acceleration) <= config.max_jerk * config.dt
+                && norm(agent.velocity()) <= 0.001 * config.speed
                 && match command {
                     Command::Gather { center, radius } => {
                         near_region(i, agents, center, radius, config)
@@ -105,20 +104,21 @@ fn resolve_pairs(
                         || other.state == AgentState::Terminated
                         || norm(sub(agent.position, other.position)) > config.neighbor_radius
                         || norm(sub(agent.position, other.position))
-                            > 1.2 * (config.body_radius + world.agent_config(j).body_radius)
+                            > (1.0 + 1e-9)
+                                * (config.body_radius + world.agent_config(j).body_radius)
                 })
             {
                 events.push((0.0, Event::Arrival(i)));
             }
-            if let Some(square) = world.obstacle()
-                && let Some(time) = square.contact(
+            for square in world.obstacles() {
+                if let Some(time) = square.contact(
                     agent.position,
                     agent.velocity(),
                     config.body_radius,
                     remaining,
-                )?
-            {
-                events.push((time, Event::Obstacle(i)));
+                )? {
+                    events.push((time, Event::Obstacle(i)));
+                }
             }
         }
         for &(i, j) in pairs {
@@ -156,14 +156,12 @@ fn resolve_pairs(
                 for index in [i, j] {
                     agents[index].state = AgentState::Terminated;
                     agents[index].velocity = [0.0; 2];
-                    agents[index].acceleration = [0.0; 2];
                     agents[index].drift = [0.0; 2];
                 }
             }
             if let Event::Obstacle(index) = *event {
                 agents[index].state = AgentState::Terminated;
                 agents[index].velocity = [0.0; 2];
-                agents[index].acceleration = [0.0; 2];
                 agents[index].drift = [0.0; 2];
             }
         }
@@ -174,7 +172,6 @@ fn resolve_pairs(
                 agents[i].state = AgentState::Arrived;
                 agents[i].velocity =
                     limited(scale(agents[i].drift, -1.0), world.agent_config(i).speed);
-                agents[i].acceleration = [0.0; 2];
                 agents[i].hold_position = agents[i].position;
             }
         }

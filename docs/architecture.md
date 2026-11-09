@@ -15,12 +15,10 @@ All paths below are relative to `src/`.
 | `simulation/profiles.rs` | Profile hash, atomic profile edits and seeded scene restart |
 | `simulation/events.rs` | Step-indexed scene, command and lifecycle event history |
 | `simulation/commands.rs` | Commands and transitions between movement modes |
-| `simulation/step.rs` | Atomic fixed step: observe, compute motion, resolve contacts, commit |
-| `simulation/boids.rs` | Baseline constant-speed flock steering |
-| `simulation/copter.rs` | Copter velocity selection and predictive avoidance |
+| `simulation/step.rs` | Atomic fixed step, controlled-velocity reconciliation, contacts and commit |
+| `simulation/boids.rs` | Weighted Boids steering and local avoidance |
 | `simulation/dispersion.rs` | Local repulsion towards the requested neighbor gap |
 | `simulation/parking.rs` | Temporary local goals for gathering and final route parking |
-| `simulation/actuator.rs` | Acceleration, braking, jerk and speed bounds |
 | `simulation/geometry.rs` | Rotated rectangles/squares, exact shape queries and detours |
 | `simulation/fields.rs` | Wind and measurement-noise zone definitions |
 | `simulation/environment.rs` | Scene edits, wind sampling and deterministic observations |

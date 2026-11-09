@@ -25,7 +25,7 @@ pub(super) fn movement_direction(previous: Vec2, velocity: [f64; 2]) -> Vec2 {
     }
 }
 
-pub(super) fn copter_outline(center: Vec2, forward: Vec2) -> [Vec2; 5] {
+pub(super) fn agent_outline(center: Vec2, forward: Vec2) -> [Vec2; 5] {
     let side = vec2(-forward.y, forward.x);
     [
         center + forward * 8.0,
@@ -36,8 +36,8 @@ pub(super) fn copter_outline(center: Vec2, forward: Vec2) -> [Vec2; 5] {
     ]
 }
 
-pub(super) fn draw_copter(center: Vec2, forward: Vec2, color: Color) {
-    let p = copter_outline(center, forward);
+pub(super) fn draw_agent(center: Vec2, forward: Vec2, color: Color) {
+    let p = agent_outline(center, forward);
     for i in 1..4 {
         draw_triangle(p[0], p[i], p[i + 1], color);
     }

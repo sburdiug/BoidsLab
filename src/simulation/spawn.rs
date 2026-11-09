@@ -31,7 +31,6 @@ impl Simulation {
                 "initial velocity must be finite and nonzero",
             ))?;
             agents[i].velocity = scale(direction, config.speed);
-            agents[i].acceleration = [0.0; 2];
             agents[i].settled_time = 0.0;
             agents[i].drift = [0.0; 2];
             agents[i].hold_position = agents[i].position;
@@ -135,8 +134,9 @@ impl Simulation {
                     return Err(SimulationError::NumericOverflow);
                 }
                 if self
-                    .obstacle
-                    .is_none_or(|o| o.distance(p) > config.body_radius)
+                    .obstacles
+                    .iter()
+                    .all(|o| o.distance(p) > config.body_radius)
                     && pending
                         .iter()
                         .all(|a| norm(sub(p, a.position)) > 2.0 * config.body_radius)
@@ -157,7 +157,7 @@ impl Simulation {
             }
         }
         let mut validated = Self::new(config, pending)?;
-        validated.obstacle = self.obstacle;
+        validated.obstacles = self.obstacles.clone();
         validated.set_command(command)?;
         let id = self.groups.len();
         let start = self.agents.len();

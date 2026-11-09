@@ -22,7 +22,7 @@ pub(super) fn inspector(world: &Simulation, selected: Option<usize>, x: f32) {
             TEXT,
         );
         label(
-            &format!("Position  {:.3}, {:.3}", p[0], p[1]),
+            &format!("Position m {:.3}, {:.3}", p[0], p[1]),
             x + 16.0,
             173.0,
             17.0,
@@ -31,7 +31,7 @@ pub(super) fn inspector(world: &Simulation, selected: Option<usize>, x: f32) {
         label(
             &world
                 .measured_position(id)
-                .map(|p| format!("Measured  {:.3}, {:.3}", p[0], p[1]))
+                .map(|p| format!("Measured m {:.3}, {:.3}", p[0], p[1]))
                 .unwrap_or_else(|_| "Measured: unavailable".to_owned()),
             x + 16.0,
             198.0,
@@ -39,21 +39,21 @@ pub(super) fn inspector(world: &Simulation, selected: Option<usize>, x: f32) {
             TEXT,
         );
         label(
-            &format!("Ground v  {:.3}, {:.3}", v[0], v[1]),
+            &format!("Ground m/s {:.3}, {:.3}", v[0], v[1]),
             x + 16.0,
             223.0,
             17.0,
             TEXT,
         );
         label(
-            &format!("Air v  {:.3}, {:.3}", air[0], air[1]),
+            &format!("Air m/s {:.3}, {:.3}", air[0], air[1]),
             x + 16.0,
             248.0,
             17.0,
             TEXT,
         );
         label(
-            &format!("Wind  {:.3}, {:.3}", wind[0], wind[1]),
+            &format!("Wind m/s {:.3}, {:.3}", wind[0], wind[1]),
             x + 16.0,
             273.0,
             17.0,
@@ -62,11 +62,9 @@ pub(super) fn inspector(world: &Simulation, selected: Option<usize>, x: f32) {
         let count = (0..world.agents().len())
             .filter(|&j| world.perceives(id, j))
             .count();
+        let ground_speed = v[0].hypot(v[1]);
         label(
-            &format!(
-                "Control accel  {:.3}",
-                a.acceleration()[0].hypot(a.acceleration()[1])
-            ),
+            &format!("{ground_speed:.2} m/s = {:.1} km/h", ground_speed * 3.6),
             x + 16.0,
             298.0,
             17.0,
@@ -231,7 +229,7 @@ impl App {
             } else {
                 match self.tool {
                     Tool::AddAgents => {
-                        "Add: edit the new-group profile, choose Copters / Boids, then click a spawn center."
+                        "Add: edit the new-group profile, then click a spawn center."
                     }
                     Tool::Inspect => {
                         "Inspect: click agent or object. Drag the round handle to rotate. Alt-click cycles objects."
@@ -240,13 +238,13 @@ impl App {
                         "Fly: drag towards a preferred area for the selected group. The tool finishes on release."
                     }
                     Tool::Gather => {
-                        "Gather: draw a soft area. Copters take nearby free places; the group shape is unrestricted."
+                        "Gather: draw a soft area. Agents take nearby free places; the group shape is unrestricted."
                     }
                     Tool::Spread => {
                         "Spread: choose Neighbor gap (<= View radius), then click / drag. No target circle."
                     }
                     Tool::Follow => {
-                        "Follow: hold left mouse over the field. Copters follow a target region."
+                        "Follow: hold left mouse over the field. Agents follow a target region."
                     }
                     Tool::Rectangle => {
                         "Rectangle: drag width, release; click height; rotate and click to place."

@@ -10,38 +10,36 @@ use macroquad::{
 use rust_playground::simulation::{Config, Group, SpawnConfig};
 use std::str::FromStr;
 
-const LABELS: [&str; 19] = [
+const LABELS: [&str; 17] = [
     "Agents",
     "Seed",
-    "Spawn radius",
-    "Max speed",
-    "Time step",
+    "Spawn radius (m)",
+    "Speed (m/s)",
+    "Time step (s)",
     "Boids response",
     "Separation weight",
     "Alignment weight",
     "Cohesion weight",
-    "View radius",
-    "Separation radius",
-    "Body radius",
-    "Max acceleration",
-    "Max braking",
-    "Max jerk",
-    "Obstacle gap",
+    "View radius (m)",
+    "Separation (m)",
+    "Body radius (m)",
+    "Obstacle gap (m)",
     "Obstacle weight",
     "Route centering",
     "Route cohesion",
+    "Goal weight",
 ];
 
 pub(super) struct Settings {
-    pub(super) values: [String; 19],
+    pub(super) values: [String; 17],
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             values: [
-                "10", "42", "3", "1", "0.1", "0.1", "10", "1", "3", "1", "0.3", "0.025", "1", "2",
-                "8", "0.15", "1", "0.25", "1",
+                "10", "42", "3", "1", "0.1", "0.1", "10", "1", "3", "1", "0.3", "0.025", "0.15",
+                "1", "0.25", "1", "15",
             ]
             .map(str::to_owned),
         }
@@ -67,14 +65,11 @@ impl Settings {
             neighbor_radius: value(9)?,
             separation_radius: value(10)?,
             body_radius: value(11)?,
-            max_acceleration: value(12)?,
-            max_braking: value(13)?,
-            max_jerk: value(14)?,
-            obstacle_clearance: value(15)?,
-            obstacle_weight: value(16)?,
-            route_centering: value(17)?,
-            route_cohesion: value(18)?,
-            ..Config::default()
+            obstacle_clearance: value(12)?,
+            obstacle_weight: value(13)?,
+            route_centering: value(14)?,
+            route_cohesion: value(15)?,
+            command_weight: value(16)?,
         })
     }
     pub(super) fn spawn(&self, center: [f64; 2]) -> Result<SpawnConfig, String> {
@@ -105,13 +100,11 @@ impl Settings {
             c.neighbor_radius.to_string(),
             c.separation_radius.to_string(),
             c.body_radius.to_string(),
-            c.max_acceleration.to_string(),
-            c.max_braking.to_string(),
-            c.max_jerk.to_string(),
             c.obstacle_clearance.to_string(),
             c.obstacle_weight.to_string(),
             c.route_centering.to_string(),
             c.route_cohesion.to_string(),
+            c.command_weight.to_string(),
         ];
     }
     #[cfg(test)]
@@ -171,8 +164,8 @@ impl App {
         }
         let fields: &[usize] = match self.settings_tab {
             0 => &[],
-            1 => &[3, 4, 9, 10, 11, 15, 16],
-            2 => &[5, 6, 7, 8, 17, 18],
+            1 => &[3, 4, 9, 10, 11, 12, 13, 16],
+            2 => &[5, 6, 7, 8, 14, 15],
             _ => &[],
         };
         for (slot, &i) in fields.iter().enumerate() {

@@ -104,3 +104,55 @@ fn wall_perception_uses_the_nearest_surface_and_the_agents_view_radius() {
         }
     }
 }
+
+#[test]
+fn a_nearby_wall_off_path_does_not_hide_the_wall_ahead() {
+    use rust_playground::simulation::Rectangle;
+    let cfg = Config {
+        turn_response: 1.0,
+        ..Config::default()
+    };
+    let mut world =
+        Simulation::new(cfg, vec![Agent::new([0.0, 0.0], [1.0, 0.0]).unwrap()]).unwrap();
+    world
+        .add_obstacle(Rectangle::new([-0.5, 0.5], 0.3, 0.5).unwrap())
+        .unwrap();
+    world
+        .add_obstacle(Rectangle::new([0.9, 0.0], 1.0, 0.4).unwrap())
+        .unwrap();
+    world.set_command(Command::Move([1.0, 0.0])).unwrap();
+    world.step().unwrap();
+    assert!(
+        world.agents()[0].velocity()[1].abs() > 0.01,
+        "{:?}",
+        world.agents()[0]
+    );
+}
+
+#[test]
+fn obstacle_weight_controls_steering_strength_inside_view() {
+    use rust_playground::simulation::Rectangle;
+    let heading = |weight| {
+        let config = Config {
+            obstacle_weight: weight,
+            turn_response: 1.0,
+            ..Config::default()
+        };
+        let mut world =
+            Simulation::new(config, vec![Agent::new([0.0, 0.0], [1.0, 0.0]).unwrap()]).unwrap();
+        world
+            .add_obstacle(Rectangle::new([1.0, 0.0], 1.0, 0.4).unwrap())
+            .unwrap();
+        world.set_command(Command::Move([1.0, 0.0])).unwrap();
+        world.step().unwrap();
+        world.agents()[0].velocity()[1].abs()
+    };
+    let disabled = heading(0.0);
+    let partial = heading(0.5);
+    let full = heading(1.0);
+    assert!(
+        disabled < partial && partial < full,
+        "{disabled}, {partial}, {full}"
+    );
+    assert_eq!(heading(2.0), full);
+}

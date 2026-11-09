@@ -24,7 +24,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         seed,
         spawn_radius,
         command,
-        obstacle,
+        obstacles,
         winds,
         noises,
         waypoints,
@@ -36,13 +36,22 @@ fn run() -> Result<(), Box<dyn Error>> {
         return Ok(());
     };
     let mut world = if groups.is_empty() {
-        let mut world = if count == 0 {
-            let mut w = Simulation::empty(config)?;
-            w.set_obstacle(obstacle)?;
-            w
-        } else {
-            Simulation::seeded_with_obstacle(config, count, spawn_radius, seed, obstacle)?
-        };
+        let mut world = Simulation::empty(config)?;
+        for &shape in &obstacles {
+            world.add_obstacle(shape)?;
+        }
+        if count > 0 {
+            world.add_group(
+                config,
+                rust_playground::simulation::SpawnConfig {
+                    count,
+                    center: [0.0; 2],
+                    radius: spawn_radius,
+                    seed,
+                },
+                Command::Flock,
+            )?;
+        }
         for wind in winds {
             world.add_wind(wind);
         }
@@ -72,7 +81,9 @@ fn run() -> Result<(), Box<dyn Error>> {
         world
     } else {
         let mut world = Simulation::empty(groups[0].config)?;
-        world.set_obstacle(obstacle)?;
+        for &shape in &obstacles {
+            world.add_obstacle(shape)?;
+        }
         for wind in winds {
             world.add_wind(wind);
         }

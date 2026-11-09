@@ -12,11 +12,11 @@ pub struct Agent {
     pub(super) group_id: usize,
     pub(super) position: [f64; 2],
     pub(super) velocity: [f64; 2],
-    pub(super) acceleration: [f64; 2],
     pub(super) settled_time: f64,
     pub(super) state: AgentState,
     pub(super) drift: [f64; 2],
     pub(super) hold_position: [f64; 2],
+    pub(super) local_target: Option<[f64; 2]>,
     pub(super) waypoint_index: usize,
     pub(super) route_offset: f64,
 }
@@ -34,11 +34,11 @@ impl Agent {
             group_id: 0,
             position,
             velocity,
-            acceleration: [0.0; 2],
             settled_time: 0.0,
             state: AgentState::Moving,
             drift: [0.0; 2],
             hold_position: position,
+            local_target: None,
             waypoint_index: 0,
             route_offset: 0.0,
         })
@@ -66,9 +66,6 @@ impl Agent {
     }
     pub fn waypoint_index(&self) -> usize {
         self.waypoint_index
-    }
-    pub fn acceleration(&self) -> [f64; 2] {
-        self.acceleration
     }
     pub fn state(&self) -> AgentState {
         self.state

@@ -223,14 +223,14 @@ fn scene_trace_is_repeatable_jsonl_and_refuses_to_overwrite_a_file() {
 }
 
 #[test]
-fn copter_cli_commands_report_hovering_agents() {
+fn single_agent_commands_report_arrival() {
     for args in [
         vec!["--hold"],
         vec!["--gather", "2", "3", "1"],
         vec!["--spread", "0.8"],
     ] {
         let output = Command::new(env!("CARGO_BIN_EXE_simulation"))
-            .args(["--steps", "600"])
+            .args(["--agents", "1", "--steps", "600"])
             .args(args)
             .output()
             .unwrap();
@@ -240,12 +240,9 @@ fn copter_cli_commands_report_hovering_agents() {
             String::from_utf8_lossy(&output.stderr)
         );
         let summary = String::from_utf8(output.stdout).unwrap();
-        assert!(summary.contains("\"arrived\":10"));
+        assert!(summary.contains("\"arrived\":1"));
         assert!(summary.contains("\"terminated\":0"));
-        assert!(summary.contains("\"model\":\"boids-2d-v11\""));
-        assert!(summary.contains("\"max_acceleration\":1"));
-        assert!(summary.contains("\"max_braking\":2"));
-        assert!(summary.contains("\"max_jerk\":8"));
+        assert!(summary.contains("\"model\":\"boids-2d-v12\""));
     }
 }
 
@@ -288,7 +285,7 @@ fn independent_cli_groups_export_their_own_profiles_commands_and_directed_polici
         "1",
         "0.5",
         "42",
-        "copters",
+        "boids",
         "--gather",
         "0",
         "3",
@@ -364,4 +361,78 @@ fn empty_scene_and_invalid_group_definitions_have_explicit_outcomes() {
         assert!(out.stdout.is_empty());
         assert!(!out.stderr.is_empty());
     }
+}
+
+#[test]
+fn cli_exports_multiple_obstacles() {
+    let output = Command::new(env!("CARGO_BIN_EXE_simulation"))
+        .args([
+            "--empty",
+            "--steps",
+            "0",
+            "--rectangle",
+            "0",
+            "0",
+            "2",
+            "3",
+            "--rectangle",
+            "8",
+            "1",
+            "4",
+            "5",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let result = String::from_utf8(output.stdout).unwrap();
+    assert!(result.contains("\"rectangles\":[{\"center\":[0,0],\"width\":2,\"height\":3,\"angle_degrees\":0},{\"center\":[8,1],\"width\":4,\"height\":5,\"angle_degrees\":0}]"));
+}
+
+#[test]
+fn each_cli_obstacle_has_its_own_rotation() {
+    let output = Command::new(env!("CARGO_BIN_EXE_simulation"))
+        .args([
+            "--empty",
+            "--steps",
+            "0",
+            "--rectangle",
+            "0",
+            "0",
+            "2",
+            "3",
+            "--obstacle-angle",
+            "90",
+            "--rectangle",
+            "8",
+            "0",
+            "2",
+            "3",
+            "--obstacle-angle",
+            "0",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let summary = String::from_utf8(output.stdout).unwrap();
+    assert!(summary.contains("\"center\":[0,0],\"width\":2,\"height\":3,\"angle_degrees\":90"));
+    assert!(summary.contains("\"center\":[8,0],\"width\":2,\"height\":3,\"angle_degrees\":0"));
+}
+
+#[test]
+fn units_are_present_in_cli_snapshots() {
+    let result = Command::new(env!("CARGO_BIN_EXE_simulation"))
+        .args(["--empty", "--steps", "0"])
+        .output()
+        .unwrap();
+    assert!(result.status.success());
+    let json = String::from_utf8(result.stdout).unwrap();
+    assert!(json.contains("\"units\":{\"length\":\"m\",\"time\":\"s\",\"speed\":\"m/s\"}"));
 }

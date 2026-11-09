@@ -4,9 +4,7 @@ use super::SimulationError;
 pub struct Config {
     pub dt: f64,
     pub speed: f64,
-    pub max_acceleration: f64,
-    pub max_braking: f64,
-    pub max_jerk: f64,
+
     pub turn_response: f64,
     pub neighbor_radius: f64,
     pub separation_radius: f64,
@@ -26,9 +24,7 @@ impl Default for Config {
         Self {
             dt: 0.1,
             speed: 1.0,
-            max_acceleration: 1.0,
-            max_braking: 2.0,
-            max_jerk: 8.0,
+
             turn_response: 0.1,
             neighbor_radius: 1.0,
             separation_radius: 0.3,
@@ -36,7 +32,7 @@ impl Default for Config {
             separation_weight: 10.0,
             alignment_weight: 1.0,
             cohesion_weight: 3.0,
-            command_weight: 1.0,
+            command_weight: 15.0,
             obstacle_clearance: 0.15,
             obstacle_weight: 1.0,
             route_centering: 0.25,
@@ -50,9 +46,6 @@ impl Config {
         let positive = [
             self.dt,
             self.speed,
-            self.max_acceleration,
-            self.max_braking,
-            self.max_jerk,
             self.neighbor_radius,
             self.separation_radius,
             self.body_radius,
@@ -73,15 +66,6 @@ impl Config {
             || !(0.0..=1.0).contains(&self.turn_response)
             || self.separation_radius > self.neighbor_radius
             || !(self.speed * self.dt).is_finite()
-            || ![
-                self.max_acceleration * self.dt,
-                self.max_braking * self.dt,
-                self.max_jerk * self.dt,
-                self.max_acceleration.powi(2) / self.max_jerk,
-                self.max_braking.powi(2) / self.max_jerk,
-            ]
-            .iter()
-            .all(|v| v.is_finite())
             || !(2.0 * self.body_radius).powi(2).is_finite()
             || (2.0 * self.body_radius).powi(2) == 0.0
         {

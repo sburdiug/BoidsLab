@@ -6,20 +6,18 @@ use std::{error::Error, str::FromStr};
 pub(super) const HELP: &str = "Usage: cargo run --bin simulation -- [OPTIONS]
 
 Runs the shared 2D core without a window and writes one JSON summary.
+Distances are metres, time seconds, and speeds metres per second.
 
   --empty                     Start with no agents
-  --group X Y N R SEED MODE    Add a group; MODE: copters or boids (repeatable)
+  --group X Y N R SEED MODE    Add a group; MODE: boids (repeatable)
   --interaction A B MODE      Directed policy: react, avoid, ignore (repeatable)
-  --rectangle X Y W H         Rectangular obstacle; world X/Y dimensions
+  --rectangle X Y W H         Rectangular obstacle; repeatable, world X/Y dimensions
   --agents N                  Agent count (default: 10)
   --steps N                   Fixed steps (default: 100)
   --seed N                    Random seed (default: 42)
   --spawn-radius R            Initial disk radius (default: 3)
   --dt T                      Fixed time step (default: 0.1)
-  --speed V                   Maximum copter speed / Boids speed (default: 1)
-  --max-acceleration A        Copter acceleration limit (default: 1)
-  --max-braking B             Copter braking limit (default: 2)
-  --max-jerk J                Copter acceleration-change limit (default: 8)
+  --speed V                   Boids speed in m/s (default: 1)
   --turn-response M           Free Boids heading response in [0, 1] (default: 0.1)
   --neighbor-radius R         Omnidirectional perception radius (default: 1)
   --separation-radius R       Separation activation radius (default: 0.3)
@@ -27,13 +25,13 @@ Runs the shared 2D core without a window and writes one JSON summary.
   --separation-weight W        Nonnegative rule weight (default: 10)
   --alignment-weight W         Nonnegative rule weight (default: 1)
   --cohesion-weight W          Nonnegative rule weight (default: 3)
-  --command-weight W           Nonnegative collective command weight (default: 1)
+  --command-weight W           Nonnegative collective command weight (default: 15)
   --direction X Y              Steer the flock along a direction
   --gather X Y R               Gather near the center; overflow outside is allowed
   --spread GAP                 Increase neighbor spacing (body margin <= GAP <= view)
   --hold                      Hover at current positions
-  --square X Y SIDE           One static square obstacle
-  --square-angle DEG          Obstacle rotation, counterclockwise (default: 0)
+  --square X Y SIDE           Static square obstacle (repeatable)
+  --square-angle DEG          Rotate the preceding obstacle, counterclockwise (default: 0)
   --wind X Y SIDE VX VY       Add a square wind-velocity field (repeatable)
   --wind-rect X Y W L DEG V   Rectangular wind field; V is nonnegative speed
   --noise X Y SIDE SIGMA      Add Gaussian position-measurement noise
@@ -101,7 +99,7 @@ pub(super) struct Options {
     pub seed: u64,
     pub spawn_radius: f64,
     pub command: Option<Command>,
-    pub obstacle: Option<Rectangle>,
+    pub obstacles: Vec<Rectangle>,
     pub winds: Vec<WindZone>,
     pub noises: Vec<NoiseZone>,
     pub waypoints: Vec<[f64; 2]>,
@@ -118,8 +116,9 @@ impl Options {
         let mut explicit_count = false;
         let (mut count, mut steps, mut seed, mut spawn_radius) = (10_usize, 100_u64, 42_u64, 3.0);
         let mut command = None;
-        let mut obstacle = None;
-        let mut obstacle_angle: Option<f64> = None;
+        let mut obstacles = Vec::new();
+        let mut pending_obstacle_angle: Option<f64> = None;
+        let mut obstacle_angle_set = false;
         let mut winds = Vec::new();
         let mut noises = Vec::new();
         let mut waypoints = Vec::new();
@@ -156,8 +155,7 @@ impl Options {
                     let mode: String = value(&mut args, &flag)?;
                     let mode = match mode.as_str() {
                         "boids" => Command::Flock,
-                        "copters" => Command::Hold,
-                        _ => return Err("group mode must be copters or boids".into()),
+                        _ => return Err("group mode must be boids".into()),
                     };
                     current_group = Some((
                         SpawnConfig {
@@ -186,9 +184,6 @@ impl Options {
                 "--spawn-radius" => spawn_radius = value(&mut args, &flag)?,
                 "--dt" => config.dt = value(&mut args, &flag)?,
                 "--speed" => config.speed = value(&mut args, &flag)?,
-                "--max-acceleration" => config.max_acceleration = value(&mut args, &flag)?,
-                "--max-braking" => config.max_braking = value(&mut args, &flag)?,
-                "--max-jerk" => config.max_jerk = value(&mut args, &flag)?,
                 "--turn-response" => config.turn_response = value(&mut args, &flag)?,
                 "--neighbor-radius" => config.neighbor_radius = value(&mut args, &flag)?,
                 "--separation-radius" => config.separation_radius = value(&mut args, &flag)?,
@@ -210,9 +205,6 @@ impl Options {
                 }
                 "--obstacle-weight" => config.obstacle_weight = value(&mut args, &flag)?,
                 "--square" | "--rectangle" => {
-                    if obstacle.is_some() {
-                        return Err("only one solid obstacle is supported".into());
-                    }
                     let center = [value(&mut args, &flag)?, value(&mut args, &flag)?];
                     let width = value(&mut args, &flag)?;
                     let height = if flag == "--square" {
@@ -220,13 +212,25 @@ impl Options {
                     } else {
                         value(&mut args, &flag)?
                     };
-                    obstacle = Some(Rectangle::new(center, height, width)?);
+                    let pending_angle = pending_obstacle_angle.take();
+                    let angle = pending_angle.unwrap_or(0.0_f64);
+                    obstacles
+                        .push(Rectangle::new(center, height, width)?.rotated(angle.to_radians())?);
+                    obstacle_angle_set = pending_angle.is_some();
                 }
                 "--square-angle" | "--obstacle-angle" => {
-                    if obstacle_angle.is_some() {
-                        return Err("choose only one square angle".into());
+                    let angle: f64 = value(&mut args, &flag)?;
+                    if let Some(last) = obstacles.last_mut() {
+                        if obstacle_angle_set {
+                            return Err("obstacle angle is already set".into());
+                        }
+                        *last = last.rotated(angle.to_radians())?;
+                        obstacle_angle_set = true;
+                    } else {
+                        if pending_obstacle_angle.replace(angle).is_some() {
+                            return Err("obstacle angle is already set".into());
+                        }
                     }
-                    obstacle_angle = Some(value(&mut args, &flag)?);
                 }
                 "--wind-rect" | "--noise-rect" => {
                     let center = [value(&mut args, &flag)?, value(&mut args, &flag)?];
@@ -326,12 +330,9 @@ impl Options {
         {
             return Err("route points require their own command".into());
         }
-        if obstacle_angle.is_some() && obstacle.is_none() {
-            return Err("square angle requires a square".into());
+        if pending_obstacle_angle.is_some() {
+            return Err("obstacle angle requires an obstacle".into());
         }
-        let obstacle = obstacle
-            .map(|square| square.rotated(obstacle_angle.unwrap_or(0.0).to_radians()))
-            .transpose()?;
         Ok(Some(Self {
             groups,
             interactions,
@@ -341,7 +342,7 @@ impl Options {
             seed,
             spawn_radius,
             command,
-            obstacle,
+            obstacles,
             winds,
             noises,
             waypoints,

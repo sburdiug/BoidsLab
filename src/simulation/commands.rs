@@ -106,10 +106,10 @@ impl Simulation {
             if agent.state == AgentState::Terminated {
                 continue;
             }
+            agent.local_target = None;
             if command == Command::Hold {
                 agent.state = AgentState::Arrived;
                 agent.velocity = limited(scale(agent.drift, -1.0), config.speed);
-                agent.acceleration = [0.0; 2];
                 agent.settled_time = 0.0;
                 agent.hold_position = agent.position;
             } else if matches!(
@@ -128,7 +128,6 @@ impl Simulation {
                 };
                 agent.state = AgentState::Moving;
                 agent.velocity = scale(direction, config.speed);
-                agent.acceleration = [0.0; 2];
             }
         }
         let route = self.groups[id].route.clone();

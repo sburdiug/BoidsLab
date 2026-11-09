@@ -1,7 +1,7 @@
 use super::{
     Tool,
     camera::*,
-    glyphs::{copter_outline, movement_direction},
+    glyphs::{agent_outline, movement_direction},
     objects::ObjectProperties,
     settings::Settings,
 };
@@ -89,7 +89,7 @@ fn movement_marker_follows_velocity_and_remembers_direction_while_stopped() {
     assert_eq!(movement_direction(east, [0.0, 0.0]), east);
     let west = movement_direction(east, [-1.0, 0.0]);
     assert_eq!(west, vec2(-1.0, 0.0));
-    let outline = copter_outline(vec2(30.0, 20.0), west);
+    let outline = agent_outline(vec2(30.0, 20.0), west);
     assert_eq!(outline[0], vec2(22.0, 20.0));
     assert_eq!(outline.len(), 5);
 }
@@ -97,12 +97,12 @@ fn movement_marker_follows_velocity_and_remembers_direction_while_stopped() {
 #[test]
 fn route_weights_are_editable_and_validated_with_other_settings() {
     let mut settings = Settings::default();
-    settings.values[17] = "0.7".into();
-    settings.values[18] = "0".into();
+    settings.values[14] = "0.7".into();
+    settings.values[15] = "0".into();
     let world = settings.build().unwrap();
     assert_eq!(world.config().route_centering, 0.7);
     assert_eq!(world.config().route_cohesion, 0.0);
-    settings.values[18] = "-1".into();
+    settings.values[15] = "-1".into();
     assert!(settings.build().is_err());
 }
 
@@ -140,7 +140,6 @@ fn empty_scene_adds_groups_live_and_finishes_commands_after_assignment() {
     assert!(app.tool == Tool::Inspect);
     assert_eq!(app.markers.len(), 2);
     app.playback.toggle();
-    app.spawn_free_boids = true;
     app.add_group_at([3.0, 0.0]);
     assert_eq!(app.playback.state(), PlaybackState::Running);
     assert_eq!(app.world.group(1).unwrap().command(), Command::Flock);

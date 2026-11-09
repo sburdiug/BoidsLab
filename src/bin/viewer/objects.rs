@@ -3,17 +3,17 @@ use macroquad::prelude::*;
 use rust_playground::simulation::{NoiseZone, Rectangle, Simulation, WindZone};
 
 pub(super) const OBJECT_LABELS: [&str; 11] = [
-    "Width X",
-    "Height Y",
+    "Width X (m)",
+    "Height Y (m)",
     "Angle deg",
-    "Wind width",
-    "Wind length",
+    "Wind width (m)",
+    "Wind length (m)",
     "Angle deg",
-    "Wind speed",
-    "Noise width",
-    "Noise length",
+    "Wind speed (m/s)",
+    "Noise width (m)",
+    "Noise length (m)",
     "Angle deg",
-    "Noise sigma",
+    "Noise sigma (m)",
 ];
 pub(super) struct ObjectProperties {
     pub values: [String; 11],
@@ -166,11 +166,15 @@ impl SceneObject {
     }
     pub fn apply(self, world: &mut Simulation, id: Option<ObjectId>) -> Result<ObjectId, String> {
         match (self, id) {
-            (Self::Obstacle(square), None | Some(ObjectId::Obstacle)) => {
+            (Self::Obstacle(shape), Some(ObjectId::Obstacle(i))) => {
                 world
-                    .set_obstacle(Some(square))
+                    .replace_obstacle(i, shape)
                     .map_err(|e| e.to_string())?;
-                Ok(ObjectId::Obstacle)
+                Ok(ObjectId::Obstacle(i))
+            }
+            (Self::Obstacle(shape), None) => {
+                let i = world.add_obstacle(shape).map_err(|e| e.to_string())?;
+                Ok(ObjectId::Obstacle(i))
             }
             (Self::Wind(zone), Some(ObjectId::Wind(i))) => {
                 world.replace_wind(i, zone).map_err(|e| e.to_string())?;
@@ -197,14 +201,14 @@ impl SceneObject {
 
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum ObjectId {
-    Obstacle,
+    Obstacle(usize),
     Wind(usize),
     Noise(usize),
 }
 impl ObjectId {
     pub fn get(self, world: &Simulation) -> Option<SceneObject> {
         match self {
-            Self::Obstacle => world.obstacle().map(SceneObject::Obstacle),
+            Self::Obstacle(i) => world.obstacles().get(i).copied().map(SceneObject::Obstacle),
             Self::Wind(i) => world.wind_zones().get(i).copied().map(SceneObject::Wind),
             Self::Noise(i) => world.noise_zones().get(i).copied().map(SceneObject::Noise),
         }
@@ -215,7 +219,9 @@ pub(super) fn pick_object(
     point: [f64; 2],
     after: Option<ObjectId>,
 ) -> Option<ObjectId> {
-    let ids = std::iter::once(ObjectId::Obstacle)
+    let ids = (0..world.obstacles().len())
+        .rev()
+        .map(ObjectId::Obstacle)
         .chain((0..world.noise_zones().len()).rev().map(ObjectId::Noise))
         .chain((0..world.wind_zones().len()).rev().map(ObjectId::Wind));
     let hits: Vec<_> = ids
@@ -277,6 +283,24 @@ pub(super) fn object_outline(area: Rectangle, camera: [f64; 2], zoom: f64, viewp
 mod tests {
     use super::super::settings::Settings;
     use super::*;
+    #[test]
+    fn multiple_rectangles_can_be_selected_and_edited_independently() {
+        let mut world = Simulation::empty(Default::default()).unwrap();
+        let a = SceneObject::Obstacle(Rectangle::new([0.0, 0.0], 1.0, 2.0).unwrap())
+            .apply(&mut world, None)
+            .unwrap();
+        let b = SceneObject::Obstacle(Rectangle::new([5.0, 0.0], 1.0, 3.0).unwrap())
+            .apply(&mut world, None)
+            .unwrap();
+        assert_eq!(world.obstacles().len(), 2);
+        assert!(pick_object(&world, [0.0, 0.0], None) == Some(a));
+        assert!(pick_object(&world, [5.0, 0.0], None) == Some(b));
+        SceneObject::Obstacle(Rectangle::new([5.0, 0.0], 2.0, 3.0).unwrap())
+            .apply(&mut world, Some(b))
+            .unwrap();
+        assert_eq!(world.obstacles()[0].width(), 1.0);
+        assert_eq!(world.obstacles()[1].width(), 2.0);
+    }
     #[test]
     fn edits_update_the_selected_field_and_overlapping_objects_can_be_picked() {
         let mut world = Settings::default().build().unwrap();

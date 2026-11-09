@@ -178,11 +178,11 @@ impl App {
         }
         label(
             if self.tool == Tool::Route {
-                "Route width"
+                "Route width (m)"
             } else if self.tool == Tool::Spread {
-                "Neighbor gap"
+                "Neighbor gap (m)"
             } else {
-                "Target radius"
+                "Target radius (m)"
             },
             16.0,
             683.0,

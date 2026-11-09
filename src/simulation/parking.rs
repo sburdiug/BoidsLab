@@ -56,7 +56,7 @@ impl Simulation {
             .collect();
         let free = |point: [f64; 2]| {
             finite(point)
-                && self.obstacle.is_none_or(|o| {
+                && self.obstacles.iter().all(|o| {
                     config.obstacle_weight == 0.0
                         || o.distance(agent.position) > config.neighbor_radius
                         || o.distance(point) > config.body_radius + config.obstacle_clearance
@@ -104,7 +104,7 @@ impl Simulation {
             goal = agent.position;
             best = cost(goal);
         }
-        if let Some(obstacle) = self.obstacle {
+        for obstacle in &self.obstacles {
             let candidate =
                 obstacle.outside(center, config.body_radius * 1.1 + config.obstacle_clearance)?;
             if free(candidate) && cost(candidate) < best {

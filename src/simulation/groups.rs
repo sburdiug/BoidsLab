@@ -101,7 +101,7 @@ impl Simulation {
             config,
             agents: Vec::new(),
             steps: 0,
-            obstacle: None,
+            obstacles: Vec::new(),
             wind_zones: Vec::new(),
             noise_zones: Vec::new(),
             groups: Vec::new(),

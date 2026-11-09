@@ -1,12 +1,10 @@
 //! Fixed-step 2D motion shared by headless and graphical applications.
 
-mod actuator;
 mod agent;
 mod boids;
 mod collision;
 mod commands;
 mod config;
-mod copter;
 mod dispersion;
 mod environment;
 mod error;
@@ -37,7 +35,7 @@ pub struct Simulation {
     config: Config,
     agents: Vec<Agent>,
     steps: u64,
-    obstacle: Option<Rectangle>,
+    obstacles: Vec<Rectangle>,
     wind_zones: Vec<WindZone>,
     noise_zones: Vec<NoiseZone>,
     groups: Vec<Group>,

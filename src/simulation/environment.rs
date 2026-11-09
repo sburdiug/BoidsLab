@@ -7,7 +7,7 @@ use std::f64::consts::TAU;
 
 impl Simulation {
     pub fn obstacle(&self) -> Option<Rectangle> {
-        self.obstacle
+        self.obstacles.first().copied()
     }
     pub fn wind_zones(&self) -> &[WindZone] {
         &self.wind_zones
@@ -19,30 +19,58 @@ impl Simulation {
         self.groups.first().and_then(|g| g.route())
     }
 
-    pub fn set_obstacle(&mut self, obstacle: Option<Rectangle>) -> Result<(), SimulationError> {
-        if let Some(square) = obstacle {
-            if self.agents.iter().enumerate().any(|(i, a)| {
-                a.state != AgentState::Terminated
-                    && square.distance(a.position) <= self.agent_config(i).body_radius
-            }) {
+    pub fn obstacles(&self) -> &[Rectangle] {
+        &self.obstacles
+    }
+    fn validate_obstacle(&self, square: Rectangle) -> Result<(), SimulationError> {
+        if self.agents.iter().enumerate().any(|(i, a)| {
+            a.state != AgentState::Terminated
+                && square.distance(a.position) <= self.agent_config(i).body_radius
+        }) {
+            return Err(SimulationError::InvalidInput(
+                "obstacle touches a living agent",
+            ));
+        }
+        for g in &self.groups {
+            if g.route.as_ref().is_some_and(|r| {
+                r.points()
+                    .iter()
+                    .any(|p| square.distance(*p) <= g.config.body_radius)
+            }) || matches!(g.command, Command::Gather { center, .. } if square.distance(center) <= g.config.body_radius)
+            {
                 return Err(SimulationError::InvalidInput(
-                    "obstacle touches a living agent",
+                    "obstacle covers an active group target",
                 ));
             }
-            for g in &self.groups {
-                if g.route.as_ref().is_some_and(|r| {
-                    r.points()
-                        .iter()
-                        .any(|p| square.distance(*p) <= g.config.body_radius)
-                }) || matches!(g.command,Command::Gather {center,..} if square.distance(center)<=g.config.body_radius)
-                {
-                    return Err(SimulationError::InvalidInput(
-                        "obstacle covers an active group target",
-                    ));
-                }
-            }
         }
-        self.obstacle = obstacle;
+        Ok(())
+    }
+    /// Replace all obstacles; retained for single-obstacle callers.
+    pub fn set_obstacle(&mut self, obstacle: Option<Rectangle>) -> Result<(), SimulationError> {
+        if let Some(shape) = obstacle {
+            self.validate_obstacle(shape)?;
+        }
+        self.obstacles = obstacle.into_iter().collect();
+        self.record_scene();
+        Ok(())
+    }
+    pub fn add_obstacle(&mut self, shape: Rectangle) -> Result<usize, SimulationError> {
+        self.validate_obstacle(shape)?;
+        let index = self.obstacles.len();
+        self.obstacles.push(shape);
+        self.record_scene();
+        Ok(index)
+    }
+    pub fn replace_obstacle(
+        &mut self,
+        index: usize,
+        shape: Rectangle,
+    ) -> Result<(), SimulationError> {
+        if index >= self.obstacles.len() {
+            return Err(SimulationError::InvalidInput("unknown obstacle"));
+        }
+        self.validate_obstacle(shape)?;
+        self.obstacles[index] = shape;
         self.record_scene();
         Ok(())
     }
@@ -109,7 +137,7 @@ impl Simulation {
         center: [f64; 2],
         body: f64,
     ) -> Result<(), SimulationError> {
-        if self.obstacle.is_some_and(|o| o.distance(center) <= body) {
+        if self.obstacles.iter().any(|o| o.distance(center) <= body) {
             return Err(SimulationError::InvalidInput("target touches the obstacle"));
         }
         if self.agents[self.groups[id].agents.clone()]

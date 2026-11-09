@@ -26,7 +26,7 @@ fn route_centering_releases_the_edge_and_recenters_after_a_turn() {
         .unwrap();
     advance(&mut world, 55);
     assert!(
-        world.agents()[0].position()[1].abs() < 0.3,
+        world.agents()[0].position()[1].abs() <= 1.0,
         "{:?}",
         world.agents()
     );

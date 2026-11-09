@@ -9,9 +9,6 @@ fn config(out: &mut impl Write, c: Config) -> Result<(), Box<dyn Error>> {
     let values = [
         ("dt", c.dt),
         ("speed", c.speed),
-        ("max_acceleration", c.max_acceleration),
-        ("max_braking", c.max_braking),
-        ("max_jerk", c.max_jerk),
         ("turn_response", c.turn_response),
         ("neighbor_radius", c.neighbor_radius),
         ("separation_radius", c.separation_radius),
@@ -77,12 +74,12 @@ fn spawn(out: &mut impl Write, s: SpawnConfig) -> Result<(), Box<dyn Error>> {
 }
 fn scene(
     out: &mut impl Write,
-    obstacle: Option<Rectangle>,
+    obstacles: &[Rectangle],
     wind: &[WindZone],
     noise: &[NoiseZone],
 ) -> Result<(), Box<dyn Error>> {
     write!(out, "{{\"rectangle\":")?;
-    if let Some(r) = obstacle {
+    if let Some(r) = obstacles.first() {
         let [x, y] = r.center();
         write!(
             out,
@@ -94,7 +91,19 @@ fn scene(
     } else {
         write!(out, "null")?;
     }
-    write!(out, ",\"wind\":[")?;
+    write!(out, ",\"rectangles\":[")?;
+    for (i, r) in obstacles.iter().enumerate() {
+        let [x, y] = r.center();
+        write!(
+            out,
+            "{}{{\"center\":[{x},{y}],\"width\":{},\"height\":{},\"angle_degrees\":{}}}",
+            if i == 0 { "" } else { "," },
+            r.length(),
+            r.width(),
+            r.angle().to_degrees()
+        )?;
+    }
+    write!(out, "],\"wind\":[")?;
     for (i, z) in wind.iter().enumerate() {
         let [x, y] = z.area().center();
         let [vx, vy] = z.velocity();
@@ -147,7 +156,7 @@ pub(super) fn write_snapshot(
     let states = |s| world.agents().iter().filter(|a| a.state() == s).count();
     write!(
         out,
-        "{{\"model\":\"boids-2d-v11\",\"completion_reason\":\"{reason}\",\"seed\":{seed},\"spawn_radius\":{spawn_radius},\"steps\":{},\"time\":{},\"initial_agents\":{count},\"moving\":{},\"arrived\":{},\"terminated\":{},\"config\":",
+        "{{\"model\":\"boids-2d-v12\",\"units\":{{\"length\":\"m\",\"time\":\"s\",\"speed\":\"m/s\"}},\"completion_reason\":\"{reason}\",\"seed\":{seed},\"spawn_radius\":{spawn_radius},\"steps\":{},\"time\":{},\"initial_agents\":{count},\"moving\":{},\"arrived\":{},\"terminated\":{},\"config\":",
         world.steps(),
         world.time(),
         states(AgentState::Moving),
@@ -262,12 +271,12 @@ pub(super) fn write_snapshot(
                 route_fields(out, r)?;
             }
             EventKind::SceneChanged {
-                obstacle,
+                obstacles,
                 wind,
                 noise,
             } => {
                 write!(out, "\"type\":\"scene_changed\",\"scene\":")?;
-                scene(out, *obstacle, wind, noise)?;
+                scene(out, obstacles, wind, noise)?;
             }
         }
         write!(out, "}}")?;
@@ -275,7 +284,7 @@ pub(super) fn write_snapshot(
     write!(out, "],\"scene\":")?;
     scene(
         out,
-        world.obstacle(),
+        world.obstacles(),
         world.wind_zones(),
         world.noise_zones(),
     )?;
@@ -288,14 +297,13 @@ pub(super) fn write_snapshot(
         };
         let [x, y] = agent.position();
         let [vx, vy] = agent.velocity();
-        let [ax, ay] = agent.acceleration();
         let [avx, avy] = agent.air_velocity();
         let [wx, wy] = agent.wind_velocity();
         let [mx, my] = measured[id];
         let comma = if id == 0 { "" } else { "," };
         write!(
             out,
-            "{comma}{{\"group_id\":{},\"id\":{id},\"position\":[{x},{y}],\"measured_position\":[{mx},{my}],\"velocity\":[{vx},{vy}],\"air_velocity\":[{avx},{avy}],\"wind_velocity\":[{wx},{wy}],\"acceleration\":[{ax},{ay}],\"waypoint_index\":{},\"state\":\"{state}\"}}",
+            "{comma}{{\"group_id\":{},\"id\":{id},\"position\":[{x},{y}],\"measured_position\":[{mx},{my}],\"velocity\":[{vx},{vy}],\"air_velocity\":[{avx},{avy}],\"wind_velocity\":[{wx},{wy}],\"waypoint_index\":{},\"state\":\"{state}\"}}",
             agent.group_id(),
             agent.waypoint_index()
         )?;

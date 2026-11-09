@@ -143,21 +143,22 @@ impl Simulation {
             agent.route_offset,
             config.route_centering,
         );
-        if let Some(obstacle) = self.obstacle
-            && config.obstacle_weight > 0.0
-            && obstacle.distance(agent.position) <= config.neighbor_radius
-            && obstacle.crosses(
-                agent.position,
-                target,
-                config.body_radius + config.obstacle_clearance,
-            )?
-        {
-            return Ok(route.end_target(
-                agent.waypoint_index,
-                agent.position,
-                agent.route_offset,
-                config.route_centering,
-            ));
+        for obstacle in &self.obstacles {
+            if config.obstacle_weight > 0.0
+                && obstacle.distance(agent.position) <= config.neighbor_radius
+                && obstacle.crosses(
+                    agent.position,
+                    target,
+                    config.body_radius + config.obstacle_clearance,
+                )?
+            {
+                return Ok(route.end_target(
+                    agent.waypoint_index,
+                    agent.position,
+                    agent.route_offset,
+                    config.route_centering,
+                ));
+            }
         }
         Ok(target)
     }
@@ -177,7 +178,7 @@ impl Simulation {
             || agent.waypoint_index == 0
             || visible.is_empty()
             || norm(sub(agent.position, *route.points.last().unwrap())) <= 2.0 * route.radius
-            || self.obstacle.is_some_and(|o| {
+            || self.obstacles.iter().any(|o| {
                 config.obstacle_weight > 0.0 && o.distance(agent.position) <= config.neighbor_radius
             })
         {

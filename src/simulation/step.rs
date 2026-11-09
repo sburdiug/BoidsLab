@@ -100,16 +100,31 @@ impl Simulation {
                         } else if command == Command::FollowRoute {
                             self.route_goal(i, &neighbors, &observed)?
                         } else {
-                            self.local_goal(i, &neighbors, &observed)?
+                            let cached = agent.local_target.filter(|target| {
+                                neighbors.iter().all(|&j| {
+                                    norm(sub(*target, observed[j].position))
+                                        > 1.1
+                                            * (config.body_radius
+                                                + self.agent_config(j).body_radius)
+                                }) && self
+                                    .obstacles
+                                    .iter()
+                                    .all(|o| o.distance(*target) > config.body_radius)
+                            });
+                            let target = match cached {
+                                Some(target) => target,
+                                None => self.local_goal(i, &neighbors, &observed)?,
+                            };
+                            agent.local_target = Some(target);
+                            target
                         };
-                        let (velocity, acceleration) =
-                            self.copter_motion(i, goal, &neighbors, &observed)?;
+                        let mut velocity = self.steer(i, &neighbors, &observed, Some(goal))?;
+                        if command == Command::FollowRoute {
+                            velocity =
+                                scale(velocity, self.route_speed_factor(i, &neighbors, &observed));
+                        }
                         agent.velocity = velocity;
-                        agent.acceleration = acceleration;
-                        let slow = norm(agent.velocity()) <= 0.001 * config.speed
-                            && norm(acceleration)
-                                <= 0.001 * config.max_acceleration.min(config.max_braking);
-                        agent.settled_time = if slow {
+                        agent.settled_time = if norm(agent.velocity()) <= 0.001 * config.speed {
                             agent.settled_time + config.dt
                         } else {
                             0.0
@@ -121,11 +136,11 @@ impl Simulation {
                             agent.state = AgentState::Moving;
                         }
                     } else {
-                        agent.velocity = self.steer(i, &neighbors, &observed)?;
-                        agent.acceleration = [0.0; 2];
+                        agent.velocity = self.steer(i, &neighbors, &observed, None)?;
                     }
                 }
             }
+            self.reconcile_controlled_requests(&observed, &mut next, &grid)?;
             resolve_motion(self, &mut next)?;
         }
         let changes: Vec<_> = self
@@ -144,6 +159,102 @@ impl Simulation {
         self.steps = steps;
         for change in changes {
             self.record(change);
+        }
+        Ok(())
+    }
+}
+
+impl Simulation {
+    fn reconcile_controlled_requests(
+        &self,
+        observed: &[super::Agent],
+        next: &mut [super::Agent],
+        grid: &SpatialIndex,
+    ) -> Result<(), SimulationError> {
+        let dt = self.config.dt;
+        for _ in 0..3 {
+            let mut changed = false;
+            for i in 0..next.len() {
+                let config = self.agent_config(i);
+                let command = self.agent_group(i).command();
+                if next[i].state != AgentState::Moving
+                    || config.separation_weight == 0.0
+                    || !matches!(
+                        command,
+                        Command::Gather { .. } | Command::Spread { .. } | Command::FollowRoute
+                    )
+                {
+                    continue;
+                }
+                let neighbors = grid
+                    .neighbors(i, observed, config.neighbor_radius)
+                    .into_iter()
+                    .filter(|&j| {
+                        self.agent_group(i).interaction(observed[j].group_id)
+                            != super::Interaction::Ignore
+                    })
+                    .collect::<Vec<_>>();
+                let safe =
+                    |velocity: [f64; 2], all: &[super::Agent]| -> Result<bool, SimulationError> {
+                        let ground = add(velocity, next[i].drift);
+                        for &j in &neighbors {
+                            if all[j].state == AgentState::Terminated {
+                                continue;
+                            }
+                            let relative = sub(observed[i].position, observed[j].position);
+                            let velocity = sub(ground, all[j].velocity());
+                            if dot(relative, velocity) < 0.0
+                                && super::collision::contact_time(
+                                    relative,
+                                    velocity,
+                                    config.body_radius + self.agent_config(j).body_radius,
+                                    dt,
+                                )?
+                                .is_some()
+                            {
+                                return Ok(false);
+                            }
+                        }
+                        for wall in &self.obstacles {
+                            if config.obstacle_weight > 0.0
+                                && wall.distance(observed[i].position) <= config.neighbor_radius
+                                && wall
+                                    .contact(observed[i].position, ground, config.body_radius, dt)?
+                                    .is_some()
+                            {
+                                return Ok(false);
+                            }
+                        }
+                        Ok(true)
+                    };
+                if safe(next[i].velocity, next)? {
+                    continue;
+                }
+                let original = next[i].velocity;
+                let mut replacement = None;
+                for sample in 1..=26 {
+                    let step = (sample - 1) % 13 + 1;
+                    let angle = ((step + 1) / 2) as f64 * std::f64::consts::TAU / 12.0
+                        * if step % 2 == 0 { -1.0 } else { 1.0 };
+                    let candidate = scale(
+                        rotate(original, angle),
+                        if sample <= 13 { 1.0 } else { 0.5 },
+                    );
+                    if safe(candidate, next)? {
+                        replacement = Some(candidate);
+                        break;
+                    }
+                }
+                let velocity = replacement.unwrap_or([0.0; 2]);
+                if velocity != original {
+                    next[i].velocity = velocity;
+                    next[i].settled_time = 0.0;
+                    changed = true;
+                }
+            }
+            if !changed {
+                break;
+            }
         }
         Ok(())
     }

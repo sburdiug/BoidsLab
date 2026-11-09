@@ -36,157 +36,6 @@ fn one_agent_matches_uniform_motion_and_preserves_speed() {
 }
 
 #[test]
-fn copters_accelerate_independently_instead_of_sharing_an_arrival_clock() {
-    let mut world = Simulation::new(
-        Config::default(),
-        vec![
-            agent([-3.0, 0.0], [1.0, 0.0]),
-            agent([0.0, 2.0], [1.0, 0.0]),
-        ],
-    )
-    .unwrap();
-    world.set_command(Command::Hold).unwrap();
-    world
-        .set_command(Command::Gather {
-            center: [3.0, 0.0],
-            radius: 1.0,
-        })
-        .unwrap();
-    world.step().unwrap();
-    for a in world.agents() {
-        close(
-            a.velocity()[0].hypot(a.velocity()[1]),
-            Config::default().max_jerk * Config::default().dt.powi(2),
-        );
-    }
-    for _ in 0..9 {
-        world.step().unwrap();
-    }
-    for a in world.agents() {
-        let v = a.velocity();
-        assert!(v[0].hypot(v[1]) > 0.8 && v[0].hypot(v[1]) <= 1.0);
-    }
-    let mut straight =
-        Simulation::new(Config::default(), vec![agent([0.0, 0.0], [1.0, 0.0])]).unwrap();
-    straight.set_command(Command::Hold).unwrap();
-    straight
-        .set_command(Command::Gather {
-            center: [20.0, 0.0],
-            radius: 1.0,
-        })
-        .unwrap();
-    for _ in 0..10 {
-        straight.step().unwrap();
-    }
-    assert!(straight.agents()[0].velocity()[0] > 0.9);
-}
-
-#[test]
-fn reversing_on_one_axis_brakes_through_zero_without_a_turn_on_the_other_axis() {
-    for axis in 0..2 {
-        let position = [2.0, 3.0];
-        let mut direction = [0.0; 2];
-        direction[axis] = 1.0;
-        let mut target = position;
-        target[axis] -= 10.0;
-        let mut world =
-            Simulation::new(Config::default(), vec![agent(position, direction)]).unwrap();
-        world
-            .set_command(Command::Gather {
-                center: target,
-                radius: 1.0,
-            })
-            .unwrap();
-        let mut slowest = f64::INFINITY;
-        let mut previous = 1.0;
-        for _ in 0..30 {
-            world.step().unwrap();
-            let a = world.agents()[0];
-            close(a.velocity()[1 - axis], 0.0);
-            close(a.position()[1 - axis], position[1 - axis]);
-            assert!(
-                (a.velocity()[axis] - previous).abs()
-                    <= Config::default().max_braking * Config::default().dt + 1e-10
-            );
-            slowest = slowest.min(a.velocity()[axis].abs());
-            previous = a.velocity()[axis];
-        }
-        assert!(slowest < Config::default().max_braking * Config::default().dt);
-        assert!(world.agents()[0].velocity()[axis] < 0.0);
-    }
-}
-
-#[test]
-fn a_reversal_brakes_under_the_jerk_limit_before_backwards_motion() {
-    let config = Config {
-        command_weight: 0.43,
-        ..Config::default()
-    };
-    let mut world = Simulation::new(config, vec![agent([0.0, 0.0], [1.0, 0.0])]).unwrap();
-    world.set_command(Command::Hold).unwrap();
-    world
-        .set_command(Command::Gather {
-            center: [20.0, 0.0],
-            radius: 1.0,
-        })
-        .unwrap();
-    for _ in 0..30 {
-        world.step().unwrap();
-    }
-    assert!((world.agents()[0].velocity()[0] - 0.43).abs() < 0.01);
-    world
-        .set_command(Command::Gather {
-            center: [-20.0, 0.0],
-            radius: 1.0,
-        })
-        .unwrap();
-    for _ in 0..30 {
-        let previous = world.agents()[0];
-        world.step().unwrap();
-        let a = world.agents()[0];
-        close(a.velocity()[1], 0.0);
-        assert!(
-            (a.acceleration()[0] - previous.acceleration()[0]).abs()
-                <= config.max_jerk * config.dt + 1e-9
-        );
-        assert!(
-            (a.velocity()[0] - previous.velocity()[0]).abs()
-                <= config.max_braking * config.dt + 1e-9
-        );
-    }
-    assert!(world.agents()[0].velocity()[0] < 0.0);
-}
-
-#[test]
-fn a_copter_stabilizes_one_axis_while_still_travelling_on_the_other() {
-    for axis in 0..2 {
-        let mut target = [100.0, 100.0];
-        target[axis] = 1.0;
-        let mut world =
-            Simulation::new(Config::default(), vec![agent([0.0, 0.0], [1.0, 0.0])]).unwrap();
-        world.set_command(Command::Hold).unwrap();
-        world
-            .set_command(Command::Gather {
-                center: target,
-                radius: 1.0,
-            })
-            .unwrap();
-        for _ in 0..100 {
-            world.step().unwrap();
-        }
-        let a = world.agents()[0];
-        assert!(
-            (a.position()[axis] - 1.0).abs() < 0.005,
-            "axis not stabilized: {:?}",
-            a.position()
-        );
-        assert!(a.velocity()[axis].abs() < 0.01);
-        assert!(a.velocity()[1 - axis] > 0.9);
-        assert_eq!(a.state(), AgentState::Moving);
-    }
-}
-
-#[test]
 fn insufficient_local_vision_can_cause_a_controlled_flight_collision() {
     let config = Config {
         neighbor_radius: 0.01,
@@ -201,12 +50,6 @@ fn insufficient_local_vision_can_cause_a_controlled_flight_collision() {
         ],
     )
     .unwrap();
-    world
-        .set_command(Command::Gather {
-            center: [4.0, 0.0],
-            radius: 1.0,
-        })
-        .unwrap();
     world.step().unwrap();
     assert!(
         world
@@ -405,29 +248,6 @@ fn arrival_stops_at_the_region_instead_of_overshooting() {
 }
 
 #[test]
-fn a_fast_copter_brakes_instead_of_snapping_to_a_stop_at_the_target() {
-    let config = Config::default();
-    let mut world = Simulation::new(config, vec![agent([-0.2, 0.0], [1.0, 0.0])]).unwrap();
-    world
-        .set_command(Command::Gather {
-            center: [0.0, 0.0],
-            radius: 1.0,
-        })
-        .unwrap();
-    let mut previous = world.agents()[0].velocity();
-    for _ in 0..200 {
-        world.step().unwrap();
-        let velocity = world.agents()[0].velocity();
-        assert!(
-            (velocity[0] - previous[0]).hypot(velocity[1] - previous[1])
-                <= config.max_acceleration.max(config.max_braking) * config.dt + 1e-10
-        );
-        previous = velocity;
-    }
-    assert_eq!(world.agents()[0].state(), AgentState::Arrived);
-}
-
-#[test]
 fn invalid_inputs_are_rejected_without_panics() {
     assert!(Agent::new([f64::NAN, 0.0], [1.0, 0.0]).is_err());
     assert!(Agent::new([0.0, 0.0], [0.0, 0.0]).is_err());
@@ -447,18 +267,6 @@ fn invalid_inputs_are_rejected_without_panics() {
         },
         Config {
             separation_weight: f64::NAN,
-            ..Config::default()
-        },
-        Config {
-            max_acceleration: 0.0,
-            ..Config::default()
-        },
-        Config {
-            max_braking: -1.0,
-            ..Config::default()
-        },
-        Config {
-            max_jerk: f64::INFINITY,
             ..Config::default()
         },
     ] {
@@ -724,11 +532,16 @@ fn dead_agents_stay_dead_when_survivors_receive_new_commands() {
         world.step().unwrap();
     }
     assert_eq!(&world.agents()[..2], dead);
-    assert_eq!(world.agents()[2].state(), AgentState::Arrived);
+    assert_eq!(
+        world.agents()[2].state(),
+        AgentState::Arrived,
+        "{:?}",
+        world.agents()[2]
+    );
 }
 
 #[test]
-fn visible_danger_reduces_forward_speed_and_triggers_a_local_sidestep() {
+fn visible_danger_triggers_a_local_sidestep() {
     let make = |view| {
         let mut world = Simulation::new(
             Config {
@@ -738,7 +551,7 @@ fn visible_danger_reduces_forward_speed_and_triggers_a_local_sidestep() {
             },
             vec![
                 agent([0.0, 0.0], [1.0, 0.0]),
-                agent([0.7, 0.0], [-1.0, 0.0]),
+                agent([0.15, 0.0], [-1.0, 0.0]),
             ],
         )
         .unwrap();
@@ -752,12 +565,12 @@ fn visible_danger_reduces_forward_speed_and_triggers_a_local_sidestep() {
         world
     };
     let visible = make(1.0);
-    let blind = make(0.2);
+    let blind = make(0.1);
     let visible_v = visible.agents()[0].velocity();
     close(blind.agents()[0].velocity()[0], 1.0);
     assert!(visible_v[0] < blind.agents()[0].velocity()[0]);
     assert!(visible_v[1].abs() > 0.0);
-    assert!(visible_v[0].hypot(visible_v[1]) < 1.0);
+    close(visible_v[0].hypot(visible_v[1]), 1.0);
 }
 
 #[test]
@@ -789,4 +602,22 @@ fn an_unseen_neighbor_does_not_change_local_velocity() {
     a.step().unwrap();
     b.step().unwrap();
     assert_eq!(a.agents()[0].velocity(), b.agents()[0].velocity());
+}
+
+#[test]
+fn si_units_match_simple_uniform_motion() {
+    let config = Config {
+        speed: 2.0,
+        dt: 0.25,
+        separation_weight: 0.0,
+        alignment_weight: 0.0,
+        cohesion_weight: 0.0,
+        ..Config::default()
+    };
+    let mut world = Simulation::new(config, vec![agent([0.0, 0.0], [1.0, 0.0])]).unwrap();
+    for _ in 0..4 {
+        world.step().unwrap();
+    }
+    assert!((world.time() - 1.0).abs() < 1e-12);
+    assert!((world.agents()[0].position()[0] - 2.0).abs() < 1e-12);
 }

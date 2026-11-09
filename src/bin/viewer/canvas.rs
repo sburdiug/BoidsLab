@@ -1,7 +1,7 @@
 use super::{
     ARRIVED, App, BG, DEAD, FrameContext, MUTED, Marker, SELECTED, Tool,
     camera::{screen_point, world_point},
-    glyphs::{arrow, draw_copter},
+    glyphs::{arrow, draw_agent},
     objects::object_outline,
     theme::label,
 };
@@ -38,7 +38,14 @@ pub(super) fn grid(camera: [f64; 2], zoom: f64, area: Rect) {
         1.5,
         Color::from_rgba(65, 88, 113, 255),
     );
-    label("(0, 0)", origin.x + 7.0, origin.y - 7.0, 16.0, MUTED);
+    label("(0, 0) m", origin.x + 7.0, origin.y - 7.0, 16.0, MUTED);
+    label(
+        &format!("Grid: {spacing} m"),
+        area.x + 12.0,
+        area.y + 22.0,
+        16.0,
+        MUTED,
+    );
 }
 
 pub(super) fn scene(
@@ -79,7 +86,7 @@ pub(super) fn scene(
             &format!("Noise {:.3}", zone.position_stddev()),
         );
     }
-    if let Some(obstacle) = world.obstacle() {
+    for &obstacle in world.obstacles() {
         draw_region(
             obstacle,
             camera,
@@ -132,9 +139,9 @@ pub(super) fn scene(
         let [r, g, b, a] = world.group(agent.group_id()).unwrap().color();
         let tint = Color::from_rgba(r, g, b, a);
         match agent.state() {
-            AgentState::Moving => draw_copter(p, markers[id].direction, tint),
+            AgentState::Moving => draw_agent(p, markers[id].direction, tint),
             AgentState::Arrived => {
-                draw_copter(p, markers[id].direction, tint);
+                draw_agent(p, markers[id].direction, tint);
                 draw_circle_lines(p.x, p.y, 10.0, 1.0, ARRIVED);
             }
             AgentState::Terminated => {

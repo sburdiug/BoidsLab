@@ -7,9 +7,6 @@ impl Config {
     pub fn profile_hash(self) -> u64 {
         let values = [
             self.speed,
-            self.max_acceleration,
-            self.max_braking,
-            self.max_jerk,
             self.turn_response,
             self.neighbor_radius,
             self.separation_radius,
@@ -24,7 +21,7 @@ impl Config {
             self.route_cohesion,
         ];
         let mut hash = 0xcbf29ce484222325_u64;
-        for byte in b"boids-profile-v1".iter().copied().chain(
+        for byte in b"boids-profile-v2".iter().copied().chain(
             values
                 .into_iter()
                 .flat_map(|v| if v == 0.0 { 0_u64 } else { v.to_bits() }.to_le_bytes()),
@@ -58,8 +55,9 @@ impl Simulation {
                 continue;
             }
             if self
-                .obstacle
-                .is_some_and(|o| o.distance(a.position) <= config.body_radius)
+                .obstacles
+                .iter()
+                .any(|o| o.distance(a.position) <= config.body_radius)
                 || self.agents.iter().enumerate().any(|(j, b)| {
                     j != i
                         && b.state != AgentState::Terminated
@@ -82,12 +80,12 @@ impl Simulation {
         group.profile_hash = config.profile_hash();
         for a in &mut self.agents[group.agents.clone()] {
             if a.state != AgentState::Terminated {
+                a.local_target = None;
                 a.velocity = if matches!(group.command, Command::Flock | Command::Move(_)) {
                     scale(unit(a.velocity).unwrap_or([1.0, 0.0]), config.speed)
                 } else {
                     limited(a.velocity, config.speed)
                 };
-                a.acceleration = [0.0; 2];
                 a.settled_time = 0.0;
             }
         }
@@ -106,7 +104,7 @@ impl Simulation {
         }
         let mut world = Self::empty(self.config)?;
         world.paths = self.paths.clone();
-        world.obstacle = self.obstacle;
+        world.obstacles = self.obstacles.clone();
         world.wind_zones = self.wind_zones.clone();
         world.noise_zones = self.noise_zones.clone();
         for group in &self.groups {

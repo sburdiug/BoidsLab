@@ -271,3 +271,89 @@ fn a_large_soft_region_spreads_a_dense_cluster_without_forcing_a_perimeter() {
             .any(|a| a.position()[0].hypot(a.position()[1]) < 0.5)
     );
 }
+
+#[test]
+fn multiple_obstacles_are_preserved_and_all_stop_agents() {
+    use rust_playground::simulation::Agent;
+    let cfg = Config {
+        speed: 10.0,
+        dt: 1.0,
+        obstacle_weight: 0.0,
+        ..Config::default()
+    };
+    let mut w = Simulation::new(cfg, vec![Agent::new([-4.0, 3.0], [1.0, 0.0]).unwrap()]).unwrap();
+    let first = Rectangle::new([0.0, 0.0], 1.0, 1.0).unwrap();
+    let second = Rectangle::new([0.0, 3.0], 1.0, 1.0).unwrap();
+    assert_eq!(w.add_obstacle(first).unwrap(), 0);
+    assert_eq!(w.add_obstacle(second).unwrap(), 1);
+    assert!(
+        w.replace_obstacle(1, Rectangle::new([-4.0, 3.0], 1.0, 1.0).unwrap())
+            .is_err()
+    );
+    assert_eq!(w.obstacles(), &[first, second]);
+    w.step().unwrap();
+    assert_eq!(w.agents()[0].state(), AgentState::Terminated);
+    assert!((w.agents()[0].position()[0] + 0.525).abs() < 1e-9);
+
+    let mut seeded = Simulation::empty(cfg).unwrap();
+    seeded.add_obstacle(first).unwrap();
+    seeded.add_obstacle(second).unwrap();
+    seeded
+        .add_group(cfg, spawn([-5.0, 0.0], 1, 1), Command::Flock)
+        .unwrap();
+    assert_eq!(seeded.restarted().unwrap().obstacles(), &[first, second]);
+}
+
+#[test]
+fn controlled_groups_respect_directed_perception_while_contacts_remain_physical() {
+    for (a_to_b, b_to_a) in [
+        (Interaction::React, Interaction::React),
+        (Interaction::Ignore, Interaction::React),
+        (Interaction::Ignore, Interaction::Ignore),
+    ] {
+        let cfg = Config {
+            speed: 4.0,
+            dt: 0.1,
+            ..Config::default()
+        };
+        let mut world = Simulation::empty(cfg).unwrap();
+        let a = world
+            .add_group(
+                cfg,
+                spawn([-0.2, 0.0], 1, 1),
+                Command::Gather {
+                    center: [4.0, 0.0],
+                    radius: 0.1,
+                },
+            )
+            .unwrap();
+        let b = world
+            .add_group(
+                cfg,
+                spawn([0.2, 0.0], 1, 2),
+                Command::Gather {
+                    center: [-4.0, 0.0],
+                    radius: 0.1,
+                },
+            )
+            .unwrap();
+        world.set_interaction(a, b, a_to_b).unwrap();
+        world.set_interaction(b, a, b_to_a).unwrap();
+        world.step().unwrap();
+        let dead = world
+            .agents()
+            .iter()
+            .filter(|a| a.state() == AgentState::Terminated)
+            .count();
+        assert_eq!(
+            dead,
+            if a_to_b == Interaction::Ignore && b_to_a == Interaction::Ignore {
+                2
+            } else {
+                0
+            },
+            "modes={a_to_b:?}/{b_to_a:?}: {:?}",
+            world.agents()
+        );
+    }
+}

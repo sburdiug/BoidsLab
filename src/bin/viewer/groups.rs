@@ -100,15 +100,7 @@ impl App {
                     .map_err(|e| e.to_string())?;
             }
             self.world
-                .add_group(
-                    config,
-                    spawn,
-                    if self.spawn_free_boids {
-                        Command::Flock
-                    } else {
-                        Command::Hold
-                    },
-                )
+                .add_group(config, spawn, Command::Flock)
                 .map_err(|e| e.to_string())
         })();
         match result {
@@ -198,7 +190,7 @@ impl App {
             let x = 16.0 + (slot % 2) as f32 * 140.0;
             let y = 365.0 + (slot / 2) as f32 * 44.0;
             label(
-                ["New count", "New seed", "Spawn radius"][slot],
+                ["New count", "New seed", "Spawn radius (m)"][slot],
                 x,
                 y,
                 15.0,
@@ -208,20 +200,6 @@ impl App {
                 .position(vec2(x, y + 5.0))
                 .multiline(false)
                 .ui(&mut macroquad::ui::root_ui(), &mut self.settings.values[i]);
-        }
-        if button(
-            if self.spawn_free_boids {
-                "New: Boids"
-            } else {
-                "New: Copters"
-            },
-            156.0,
-            414.0,
-            128.0,
-            true,
-            self.spawn_free_boids,
-        ) {
-            self.spawn_free_boids = !self.spawn_free_boids;
         }
         if button(
             "Add [A]",

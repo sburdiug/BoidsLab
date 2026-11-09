@@ -51,12 +51,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             AgentState::Terminated => 2,
         };
         states[state] += 1;
-        for value in agent
-            .position()
-            .into_iter()
-            .chain(agent.velocity())
-            .chain(agent.acceleration())
-        {
+        for value in agent.position().into_iter().chain(agent.velocity()) {
             hash = (hash ^ value.to_bits()).wrapping_mul(0x100000001b3);
         }
         hash = (hash ^ state as u64).wrapping_mul(0x100000001b3);
