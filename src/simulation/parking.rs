@@ -27,8 +27,10 @@ impl Simulation {
         let usable = (radius - config.body_radius).max(0.0);
         let base = if distance <= usable {
             agent.position
-        } else {
+        } else if command == Command::FollowRoute {
             add(center, scale(unit(radial).unwrap_or([1.0, 0.0]), usable))
+        } else {
+            center
         };
         let count = observed[self.agent_group(index).agent_range()]
             .iter()
@@ -83,14 +85,19 @@ impl Simulation {
                         .max(0.75 * config.separation_radius)
             })
         };
-        // Use accessible space on this side; do not cross a parked swarm to reach its center.
+        // Do not cross a parked swarm to reach the preferred point.
         if free(base) && !blocked(base) {
             return Ok(base);
         }
         let lower_cost = |point: [f64; 2]| {
             let radial = norm(sub(point, center));
             let path = sub(point, agent.position);
-            (radial - radius).max(0.0) + 0.05 * norm(path)
+            let center_cost = if command == Command::FollowRoute {
+                (radial - radius).max(0.0)
+            } else {
+                radial
+            };
+            center_cost + 0.05 * norm(path)
         };
         let cost = |point| lower_cost(point) + if blocked(point) { 1000.0 } else { 0.0 };
         let mut goal = base;

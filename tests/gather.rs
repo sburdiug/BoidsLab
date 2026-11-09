@@ -11,6 +11,29 @@ fn parked(config: Config, positions: &[[f64; 2]]) -> Simulation {
 }
 
 #[test]
+fn fly_target_is_the_center_of_the_area_from_every_direction() {
+    for start in [[-4.0, 0.0], [4.0, 0.0], [0.0, -4.0], [0.0, 4.0]] {
+        let mut world = parked(Config::default(), &[start]);
+        world
+            .set_command(Command::Gather {
+                center: [0.0, 0.0],
+                radius: 1.0,
+            })
+            .unwrap();
+        for _ in 0..200 {
+            world.step().unwrap();
+        }
+        let agent = world.agents()[0];
+        assert_eq!(agent.state(), AgentState::Arrived);
+        assert!(
+            agent.position()[0].hypot(agent.position()[1]) < 0.05,
+            "start={start:?}, position={:?}",
+            agent.position()
+        );
+    }
+}
+
+#[test]
 fn a_small_region_is_accepted_without_fitting_a_preassigned_formation() {
     let mut world = parked(Config::default(), &[[-4.0, 0.0], [-3.9, 0.0], [4.0, 0.0]]);
     world
