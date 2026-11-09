@@ -12,6 +12,7 @@ mod input;
 mod inspectors;
 mod objects;
 mod placement;
+mod presets;
 mod settings;
 #[cfg(test)]
 mod tests;
@@ -63,6 +64,8 @@ pub(crate) struct App {
     playback: Playback,
     settings_tab: usize,
     object_properties: ObjectProperties,
+    preset_path: String,
+    preset_status: String,
     selected_object: Option<ObjectId>,
     pending_object: Option<PendingObject>,
     draft_route: Vec<[f64; 2]>,
@@ -123,6 +126,8 @@ impl App {
             playback: Playback::default(),
             settings_tab: 0,
             object_properties: ObjectProperties::default(),
+            preset_path: "scene.swarm".into(),
+            preset_status: String::new(),
             selected_object: None,
             pending_object: None,
             draft_route: Vec::new(),

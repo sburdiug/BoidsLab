@@ -217,6 +217,10 @@ pub(super) fn write_snapshot(
             e.step as f64 * world.config().dt
         )?;
         match &e.kind {
+            EventKind::GroupRemoved { group, agents } => write!(
+                out,
+                "\"type\":\"group_removed\",\"group\":{group},\"agents\":{agents}"
+            )?,
             EventKind::GroupAdded {
                 seeded,
                 group,
@@ -269,6 +273,18 @@ pub(super) fn write_snapshot(
             EventKind::PathAdded { path, route: r } => {
                 write!(out, "\"type\":\"path_added\",\"path\":{path},")?;
                 route_fields(out, r)?;
+            }
+            EventKind::PathsReplaced { paths } => {
+                write!(out, "\"type\":\"paths_replaced\",\"paths\":[")?;
+                for (i, path) in paths.iter().enumerate() {
+                    if i != 0 {
+                        write!(out, ",")?;
+                    }
+                    write!(out, "{{")?;
+                    route_fields(out, path)?;
+                    write!(out, "}}")?;
+                }
+                write!(out, "]")?;
             }
             EventKind::SceneChanged {
                 obstacles,

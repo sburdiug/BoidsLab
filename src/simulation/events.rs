@@ -13,12 +13,19 @@ pub enum EventKind {
         path: usize,
         route: Route,
     },
+    PathsReplaced {
+        paths: Vec<Route>,
+    },
     GroupAdded {
         seeded: bool,
         group: GroupId,
         config: Config,
         spawn: SpawnConfig,
         command: Command,
+    },
+    GroupRemoved {
+        group: GroupId,
+        agents: usize,
     },
     ProfileChanged {
         group: GroupId,

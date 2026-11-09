@@ -115,6 +115,40 @@ impl Simulation {
     pub fn group(&self, id: GroupId) -> Option<&Group> {
         self.groups.get(id)
     }
+    /// Remove a group and its agents. Later group and agent indices shift down.
+    pub fn remove_group(&mut self, id: GroupId) -> Result<(), SimulationError> {
+        let range = self
+            .group(id)
+            .ok_or(SimulationError::InvalidInput("unknown group"))?
+            .agents
+            .clone();
+        let count = range.len();
+        self.agents.drain(range);
+        self.groups.remove(id);
+        for group in &mut self.groups {
+            if group.id > id {
+                group.id -= 1;
+                group.agents.start -= count;
+                group.agents.end -= count;
+            }
+            group.interactions.retain(|(target, _)| *target != id);
+            for (target, _) in &mut group.interactions {
+                if *target > id {
+                    *target -= 1;
+                }
+            }
+        }
+        for agent in &mut self.agents {
+            if agent.group_id > id {
+                agent.group_id -= 1;
+            }
+        }
+        self.record(EventKind::GroupRemoved {
+            group: id,
+            agents: count,
+        });
+        Ok(())
+    }
     pub fn agent_config(&self, index: usize) -> Config {
         self.groups[self.agents[index].group_id].config
     }

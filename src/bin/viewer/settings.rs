@@ -147,15 +147,15 @@ impl Settings {
 impl App {
     pub(super) fn draw_settings(&mut self, ctx: FrameContext, mut apply_route: bool) {
         let FrameContext { can_command, .. } = ctx;
-        for (i, name) in ["Group", "Flight", "Swarm", "Scene"]
+        for (i, name) in ["Group", "Flight", "Swarm", "Scene", "Preset"]
             .into_iter()
             .enumerate()
         {
             if button(
                 name,
-                16.0 + i as f32 * 70.0,
+                16.0 + i as f32 * 56.0,
                 246.0,
-                66.0,
+                52.0,
                 true,
                 self.settings_tab == i,
             ) {
@@ -293,6 +293,9 @@ impl App {
         }
         if self.settings_tab == 2 {
             self.draw_path_assignment(ctx);
+        }
+        if self.settings_tab == 4 {
+            self.draw_presets();
         }
         if self.settings_tab == 1
             && button(

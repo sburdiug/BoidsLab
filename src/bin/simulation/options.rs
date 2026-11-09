@@ -9,6 +9,7 @@ Runs the shared 2D core without a window and writes one JSON summary.
 Distances are metres, time seconds, and speeds metres per second.
 
   --empty                     Start with no agents
+  --scene PATH                Load a reusable environment preset
   --group X Y N R SEED MODE    Add a group; MODE: boids (repeatable)
   --interaction A B MODE      Directed policy: react, avoid, ignore (repeatable)
   --rectangle X Y W H         Rectangular obstacle; repeatable, world X/Y dimensions
@@ -105,6 +106,7 @@ pub(super) struct Options {
     pub waypoints: Vec<[f64; 2]>,
     pub route_radius: Option<f64>,
     pub trace_path: Option<String>,
+    pub scene_path: Option<String>,
 }
 
 impl Options {
@@ -124,8 +126,15 @@ impl Options {
         let mut waypoints = Vec::new();
         let mut route_radius = None;
         let mut trace_path: Option<String> = None;
+        let mut scene_path: Option<String> = None;
         while let Some(flag) = args.next() {
             match flag.as_str() {
+                "--scene" => {
+                    if scene_path.is_some() {
+                        return Err("choose only one scene preset".into());
+                    }
+                    scene_path = Some(value(&mut args, &flag)?);
+                }
                 "--help" => {
                     return Ok(None);
                 }
@@ -348,6 +357,7 @@ impl Options {
             waypoints,
             route_radius,
             trace_path,
+            scene_path,
         }))
     }
 }

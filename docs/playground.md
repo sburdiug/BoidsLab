@@ -4,7 +4,7 @@
 
 ## Groups and commands
 
-The viewer starts empty and paused. On **Group**, set count, seed and spawn radius, choose **Add [A]**, and click a center. New groups start as Free Boids with seeded positions and directions. Multiple groups can be created during playback. Selection by Prev/Next or an agent click chooses the group that receives subsequent commands. A highlighted outline marks its agents. **Flight** and **Swarm** edit its profile on pause via **Apply profile**. `dt` belongs to the scene, so choose it before the first group or create a new scene.
+The viewer starts empty and paused. On **Group**, set count, seed and spawn radius, choose **Add [A]**, and click a center. New groups start as Free Boids with seeded positions and directions. Multiple groups can be created during playback. Selection by Prev/Next or an agent click chooses the group that receives subsequent commands. A highlighted outline marks its agents. While paused, **Delete group** removes the selected group and its agents; subsequent group and agent IDs shift down. **Flight** and **Swarm** edit its profile on pause via **Apply profile**. `dt` belongs to the scene, so choose it before the first group or create a new scene.
 
 Each pair of groups has an independent directed policy. React enables social and avoidance responses; Avoid retains avoidance without social alignment/cohesion; Ignore disables perception and planned response. Own group always Reacts. Actual contact terminates both regardless of policies. Identical configuration profiles have identical colors; use group IDs to distinguish them. A profile hash uses FNV-1a64 with the `boids-profile-v2` tag and the ordered little-endian f64 behavior fields in `Config::profile_hash`, excluding shared `dt`, seed, spawn, command and interaction policy; signed zero is normalized. Collisions in hash or RGB are possible; alpha is 255.
 
@@ -25,7 +25,17 @@ For **Rectangle [O]**, drag the horizontal width and release, click a height, th
 
 Wind and noise fields can be added independently. Click for typed dimensions or drag from center, then rotate and click. Width and length are metres, speed m/s and noise sigma metres; angles are degrees in UI/CLI and radians in Rust APIs. Inspect to edit or rotate an existing field. Alt-click cycles objects without selecting agents. Multiple wind vectors add. Measurement noise affects observed positions but physical contacts and field membership use true coordinates.
 
-Restart keeps the committed scene, paths, current profiles and policies, and regenerates each group at its original spawn center and seed. Groups inserted at different times into overlapping areas may not fit simultaneously at restart; restart then fails atomically and keeps the current scene. Explicit-agent groups have no seed recipe and cannot use seeded restart. There is no scene-file loader or replay viewer yet.
+Restart keeps the committed scene, paths, current profiles and policies, and regenerates each group at its original spawn center and seed. Groups inserted at different times into overlapping areas may not fit simultaneously at restart; restart then fails atomically and keeps the current scene. Explicit-agent groups have no seed recipe and cannot use seeded restart. There is no replay viewer yet.
+
+## Scene presets
+
+The **Preset** tab saves obstacles, wind zones, noise zones and saved paths, without groups, profiles, simulation time or agent states. Enter a filename and choose **Save new**; existing files are never overwritten. Use a different filename to save another revision. Pending object previews and uncommitted path drafts are not included. Relative filenames are resolved from the application's working directory; absolute filenames are also accepted.
+
+Pause and choose **Load** to replace the current environment and saved-path library. Existing groups, their profiles, states, selected group, active commands and active routes remain. The saved path selection and object-edit previews are cleared after a successful load. A new obstacle touching a living body, active gathering target or active route point rejects the entire load, preserving the prior scene and event history. Loading can be repeated with different groups or changed parameters. Loading is also available after Stop.
+
+The UTF-8 file is a versioned, line-oriented text format, independent of the JSONL trace format. Its header is `SWARM_SCENE_V1`. Each following nonempty line is `obstacle x y width length angle`, `wind x y width length angle vx vy speed`, `noise x y width length angle sigma`, or `path radius x1 y1 ...`; angles are radians, all lengths metres, and wind velocity and speed m/s. Invalid entries, unsupported versions and nonfinite/invalid values are rejected. Avoid editing files while they are being loaded.
+
+In CLI, `--scene PATH` loads the same preset before adding command-line obstacles and fields or spawning groups. For example: `cargo run --release --bin simulation -- --scene scene.swarm --group 0 0 10 2 42 boids --speed 2 --steps 200`. Saved paths are available in the output but do not automatically become group commands. JSON events contain `paths_replaced` when loading a preset; it records the replacement path library.
 
 ## Core model
 

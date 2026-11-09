@@ -16,6 +16,7 @@ mod math;
 mod parking;
 mod profiles;
 mod route;
+mod scene_preset;
 mod spatial;
 mod spawn;
 mod step;
@@ -29,6 +30,7 @@ pub use fields::{NoiseZone, WindZone};
 pub use geometry::{Rectangle, Square};
 pub use groups::{Group, GroupId, Interaction, SpawnConfig};
 pub use route::Route;
+pub use scene_preset::ScenePreset;
 
 #[derive(Debug, Clone)]
 pub struct Simulation {

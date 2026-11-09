@@ -6,7 +6,7 @@ use rand::{RngExt, SeedableRng, rngs::StdRng};
 use std::f64::consts::TAU;
 
 impl Simulation {
-    /// Agent indices are stable identifiers: terminated agents are never removed.
+    /// Terminated agents remain in the world until their group is removed.
     pub fn new(config: Config, mut agents: Vec<Agent>) -> Result<Self, SimulationError> {
         config.validate()?;
         if agents.is_empty() {

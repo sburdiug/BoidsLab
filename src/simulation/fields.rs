@@ -7,6 +7,21 @@ pub struct WindZone {
     speed: f64,
 }
 impl WindZone {
+    pub(super) fn from_preset(
+        area: Rectangle,
+        velocity: [f64; 2],
+        speed: f64,
+    ) -> Result<Self, SimulationError> {
+        let mut zone = Self::new(area, velocity)?;
+        if !speed.is_finite() || speed < 0.0 || (zone.speed - speed).abs() > 1e-12 * speed.max(1.0)
+        {
+            return Err(SimulationError::InvalidInput(
+                "wind speed and velocity do not match",
+            ));
+        }
+        zone.speed = speed;
+        Ok(zone)
+    }
     pub fn rectangular(
         center: [f64; 2],
         width: f64,

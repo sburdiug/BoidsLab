@@ -10,6 +10,34 @@ fn spawn(center: [f64; 2], count: usize, seed: u64) -> SpawnConfig {
     }
 }
 #[test]
+fn removing_a_group_reindexes_agents_and_directed_interactions() {
+    let config = Config::default();
+    let mut world = Simulation::empty(config).unwrap();
+    for (i, x) in [0.0, 5.0, 10.0].into_iter().enumerate() {
+        world
+            .add_group(config, spawn([x, 0.0], 1, i as u64), Command::Hold)
+            .unwrap();
+    }
+    world.set_interaction(0, 2, Interaction::Avoid).unwrap();
+    world.set_interaction(2, 0, Interaction::Ignore).unwrap();
+    world.set_interaction(0, 1, Interaction::Ignore).unwrap();
+    let last_position = world.agents()[2].position();
+    assert!(world.remove_group(3).is_err());
+    world.remove_group(1).unwrap();
+    assert_eq!(world.groups().len(), 2);
+    assert_eq!(world.agents().len(), 2);
+    assert_eq!(world.agents()[1].position(), last_position);
+    assert_eq!(world.agents()[1].group_id(), 1);
+    assert_eq!(world.group(1).unwrap().agent_range(), 1..2);
+    assert_eq!(world.interaction(0, 1).unwrap(), Interaction::Avoid);
+    assert_eq!(world.interaction(1, 0).unwrap(), Interaction::Ignore);
+    world.step().unwrap();
+    assert_eq!(world.restarted().unwrap().groups().len(), 2);
+    world.remove_group(0).unwrap();
+    world.remove_group(0).unwrap();
+    assert!(world.agents().is_empty());
+}
+#[test]
 fn empty_world_accepts_groups_at_any_tick_and_preserves_ids_and_profiles() {
     let mut world = Simulation::empty(Config::default()).unwrap();
     world.step().unwrap();

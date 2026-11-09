@@ -1,4 +1,4 @@
-use rust_playground::simulation::{Command, Route, Simulation};
+use rust_playground::simulation::{Command, Route, ScenePreset, Simulation};
 use std::{
     env,
     error::Error,
@@ -30,13 +30,18 @@ fn run() -> Result<(), Box<dyn Error>> {
         waypoints,
         route_radius,
         trace_path,
+        scene_path,
     }) = Options::parse(env::args().skip(1))?
     else {
         io::stdout().write_all(HELP.as_bytes())?;
         return Ok(());
     };
+    let preset = scene_path.map(ScenePreset::load).transpose()?;
     let mut world = if groups.is_empty() {
         let mut world = Simulation::empty(config)?;
+        if let Some(preset) = &preset {
+            preset.apply(&mut world)?;
+        }
         for &shape in &obstacles {
             world.add_obstacle(shape)?;
         }
@@ -81,6 +86,9 @@ fn run() -> Result<(), Box<dyn Error>> {
         world
     } else {
         let mut world = Simulation::empty(groups[0].config)?;
+        if let Some(preset) = &preset {
+            preset.apply(&mut world)?;
+        }
         for &shape in &obstacles {
             world.add_obstacle(shape)?;
         }

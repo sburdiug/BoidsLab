@@ -14,6 +14,8 @@ The viewer opens an empty paused scene. In **Group**, enter the count, seed and 
 
 Controls include **Fly**, **Gather**, **Spread**, **Follow**, **Hover**, and **Free Boids**. A completed gesture returns to Inspect while the selected command remains active. In **Scene**, construct rectangles by dragging their width, clicking their height, then rotating and clicking; add multiple independently editable obstacles, wind and position-noise fields. A Route is a wide polyline corridor: click vertices and press Enter to save and assign, or save without a group and assign later. See [playground controls and data](docs/playground.md).
 
+Use **Preset** to save the environment and saved paths to a new file and load them later into the same or another scene. Groups, their parameters and current commands are not part of the preset. Pause before loading; an obstacle conflicting with a living agent or active target rejects the entire load. Saving never overwrites an existing file: choose another filename. Relative paths use the program's working directory; absolute paths are also supported.
+
 Per directed pair of groups, **React** applies social behavior and avoidance, **Avoid** applies avoidance only, and **Ignore** disables perception. Physical contact still terminates both agents even when they ignore each other. Identical behavior profiles share a color; IDs and the selection outline distinguish groups. Restart recreates seeded groups from their original spawn recipes, preserving current scene objects, saved paths, profiles and policies. Overlapping recipes or an obstacle can make restart fail; the previous scene is retained.
 
 ## Model and units
@@ -36,7 +38,9 @@ cargo run --release --bin simulation -- --steps 400 --rectangle 4 0 2 3 --obstac
 
 `--rectangle` and `--square` are repeatable; an angle following a shape applies to that shape. Group profile/command flags after `--group` apply until the next group declaration. Profiles carry forward, commands reset. `--empty` starts without agents. Without explicit groups, `--agents` retains the single-group CLI. See `--help` for options.
 
-Stdout contains a JSON summary. `--trace` exclusively creates JSONL with the initial frame and every completed step; existing files are not overwritten. v12 includes `units`, `groups`, `paths`, `agents`, `scene.rectangles` and step-indexed `events`. `scene.rectangle` mirrors the first rectangle for older readers; `groups` is authoritative for group parameters. State-event timestamps have step precision, though swept contacts resolve positions inside the step. This is not a scene loader or replay player. JSON schema and model version differ from v11.
+Run one environment with different groups, for example `cargo run --release --bin simulation -- --scene scene.swarm --group 0 0 10 2 42 boids --speed 2 --steps 200`. Explicit CLI rectangles and fields are added to the loaded environment.
+
+Stdout contains a JSON summary. `--trace` exclusively creates JSONL with the initial frame and every completed step; existing files are not overwritten. v12 includes `units`, `groups`, `paths`, `agents`, `scene.rectangles` and step-indexed `events`. `scene.rectangle` mirrors the first rectangle for older readers; `groups` is authoritative for group parameters. State-event timestamps have step precision, though swept contacts resolve positions inside the step. JSONL is an analysis trace, not a replay player. JSON schema and model version differ from v11.
 
 ## Verification and limits
 
@@ -46,6 +50,6 @@ cargo clippy --all-targets --all-features --locked --offline -- -D warnings
 cargo fmt --check
 ```
 
-The tests cover fixed-step motion in SI units, the individual Boids rules, deterministic seeding, directed group policies, multi-obstacle editing and contacts, routes, noise/wind, gathering, wall perception and JSON output. Repeatable seed does not imply cross-platform bitwise equality. The viewer has no artificial agent-count cap, but dense scenes and pairwise spawn checks can be expensive; previous benchmarks in [performance.md](docs/performance.md) are historical v5 measurements and do not establish current GUI performance. There is no 3D mode, persistent scene format, replay viewer, batch experiment runner or Python analyzer yet.
+The tests cover fixed-step motion in SI units, the individual Boids rules, deterministic seeding, directed group policies, multi-obstacle editing and contacts, preset roundtrips, routes, noise/wind, gathering, wall perception and JSON output. Repeatable seed does not imply cross-platform bitwise equality. The viewer has no artificial agent-count cap, but dense scenes and pairwise spawn checks can be expensive; previous benchmarks in [performance.md](docs/performance.md) are historical v5 measurements and do not establish current GUI performance. There is no 3D mode, replay viewer, batch experiment runner or Python analyzer yet.
 
 [Ukrainian version](README.uk.md) · [Architecture](docs/architecture.md) · [Playground details](docs/playground.md)

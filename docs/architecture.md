@@ -14,6 +14,7 @@ All paths below are relative to `src/`.
 | `simulation/groups.rs` | Stable IDs, directed perception policies, group data and color |
 | `simulation/profiles.rs` | Profile hash, atomic profile edits and seeded scene restart |
 | `simulation/events.rs` | Step-indexed scene, command and lifecycle event history |
+| `simulation/scene_preset.rs` | Versioned environment presets and atomic application |
 | `simulation/commands.rs` | Commands and transitions between movement modes |
 | `simulation/step.rs` | Atomic fixed step, controlled-velocity reconciliation, contacts and commit |
 | `simulation/boids.rs` | Weighted Boids steering and local avoidance |
@@ -45,6 +46,7 @@ All paths below are relative to `src/`.
 | `bin/viewer/objects.rs` | Scene-object editing, selection and rotation helpers |
 | `bin/viewer/groups.rs` | Group selection/spawn/profile UI and saved-path assignment |
 | `bin/viewer/placement.rs` | Rectangle width/height/rotation stages and field placement |
+| `bin/viewer/presets.rs` | Preset filename, save and load controls |
 | `bin/viewer/glyphs.rs` | Agent shape and movement-direction rendering |
 | `bin/viewer/canvas.rs` | Grid, agents, fields, obstacles, corridors and previews |
 | `bin/viewer/inspectors.rs` | Agent/object information, notices and footer |

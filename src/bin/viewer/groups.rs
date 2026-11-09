@@ -70,6 +70,24 @@ impl App {
     pub(super) fn can_edit_group(&self) -> bool {
         self.selected_group.is_some() && self.playback.state() == PlaybackState::Paused
     }
+    pub(super) fn remove_selected_group(&mut self) {
+        if !self.can_edit_group() {
+            self.notice = Some("Pause and select a group to remove it".into());
+            return;
+        }
+        let id = self.selected_group.unwrap();
+        let range = self.world.group(id).unwrap().agent_range();
+        match self.world.remove_group(id) {
+            Ok(()) => {
+                self.markers.drain(range);
+                self.select_group(None);
+                self.interaction_target = 0;
+                self.finish_tool();
+                self.notice = None;
+            }
+            Err(e) => self.notice = Some(e.to_string()),
+        }
+    }
     pub(super) fn apply_profile(&mut self) {
         if !self.can_edit_group() {
             self.notice = Some("Pause and select a group to edit its profile".into());
@@ -277,6 +295,16 @@ impl App {
                 14.0,
                 SELECTED,
             );
+        }
+        if button(
+            "Delete group",
+            16.0,
+            552.0,
+            268.0,
+            self.can_edit_group(),
+            false,
+        ) {
+            self.remove_selected_group();
         }
     }
     pub(super) fn draw_path_assignment(&mut self, ctx: FrameContext) {

@@ -115,6 +115,24 @@ fn empty_app() -> super::App {
 }
 
 #[test]
+fn group_deletion_requires_pause_and_clears_selection() {
+    let mut app = empty_app();
+    app.settings.values[0] = "1".into();
+    app.add_group_at([-3.0, 0.0]);
+    app.add_group_at([3.0, 0.0]);
+    app.select_group(Some(0));
+    app.playback.toggle();
+    app.remove_selected_group();
+    assert_eq!(app.world.groups().len(), 2);
+    app.playback.toggle();
+    app.remove_selected_group();
+    assert_eq!(app.world.groups().len(), 1);
+    assert_eq!(app.world.agents().len(), 1);
+    assert_eq!(app.markers.len(), 1);
+    assert!(app.selected_group.is_none());
+}
+
+#[test]
 fn viewer_accepts_more_than_a_thousand_agents() {
     let mut app = empty_app();
     app.settings.values[0] = "1001".into();
@@ -181,6 +199,40 @@ fn new_groups_default_to_free_boids_even_after_selecting_a_hovering_group() {
     app.select_group(Some(0));
     app.add_group_at([3.0, 0.0]);
     assert_eq!(app.world.group(1).unwrap().command(), Command::Flock);
+}
+
+#[test]
+fn presets_restore_environment_without_replacing_groups() {
+    use rust_playground::simulation::Rectangle;
+    let mut app = empty_app();
+    app.settings.values[0] = "1".into();
+    app.add_group_at([0.0, 0.0]);
+    let path = std::env::temp_dir().join(format!(
+        "viewer-scene-{}-{}.swarm",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    app.preset_path = path.to_string_lossy().into_owned();
+    let obstacle = Rectangle::new([10.0, 0.0], 1.0, 2.0).unwrap();
+    app.world.add_obstacle(obstacle).unwrap();
+    app.save_preset();
+    assert!(path.exists(), "{}", app.preset_status);
+    app.world
+        .add_obstacle(Rectangle::new([15.0, 0.0], 1.0, 2.0).unwrap())
+        .unwrap();
+    let agents = app.world.agents().to_vec();
+    app.playback.toggle();
+    app.load_preset();
+    assert_eq!(app.world.obstacles().len(), 2);
+    app.playback.toggle();
+    app.load_preset();
+    assert_eq!(app.world.obstacles(), &[obstacle], "{}", app.preset_status);
+    assert_eq!(app.world.agents(), agents);
+    assert_eq!(app.world.groups().len(), 1);
+    std::fs::remove_file(path).unwrap();
 }
 #[test]
 fn rectangle_width_and_height_are_independent_before_rotation() {
