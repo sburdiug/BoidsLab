@@ -1,0 +1,20 @@
+[package]
+name = "rust_playground"
+version = "0.1.0"
+edition = "2024"
+default-run = "simulation"
+
+[dependencies]
+macroquad = { version = "0.4.16", default-features = false, optional = true }
+rand = "0.10.3"
+
+[features]
+viewer = ["dep:macroquad"]
+
+[[bin]]
+name = "viewer"
+path = "src/bin/viewer.rs"
+required-features = ["viewer"]
+
+[profile.dev]
+opt-level = 2
