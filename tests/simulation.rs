@@ -164,6 +164,19 @@ fn swept_collisions_terminate_participants_but_not_survivors() {
     world.step().unwrap();
     assert_eq!(world.agents()[0].state(), AgentState::Terminated);
     assert_eq!(world.agents()[1].state(), AgentState::Terminated);
+    let contacts: Vec<_> = world
+        .events()
+        .iter()
+        .filter(|e| {
+            matches!(
+                e.kind,
+                rust_playground::simulation::EventKind::AgentContact { .. }
+            )
+        })
+        .collect();
+    assert_eq!(contacts.len(), 1);
+    assert_eq!(contacts[0].agent_uids, [0, 1]);
+    assert!(contacts[0].time > 0.0 && contacts[0].time < config.dt);
     assert_eq!(world.agents()[0].velocity(), [0.0, 0.0]);
     close(world.agents()[0].position()[0], -config.body_radius);
     close(world.agents()[1].position()[0], config.body_radius);

@@ -6,13 +6,13 @@ use super::{
 enum Event {
     Contact(usize, usize),
     Arrival(usize),
-    Obstacle(usize),
+    Obstacle(usize, usize),
 }
 
 pub(super) fn resolve_motion(
     world: &Simulation,
     agents: &mut [Agent],
-) -> Result<(), SimulationError> {
+) -> Result<Vec<(f64, super::EventKind)>, SimulationError> {
     let config = world.config();
     // A body can travel at most speed * dt; this broad phase includes swept contacts.
     let ground_speed = agents.iter().map(|a| norm(a.velocity())).fold(
@@ -58,9 +58,10 @@ fn resolve_pairs(
     world: &Simulation,
     agents: &mut [Agent],
     pairs: &[(usize, usize)],
-) -> Result<(), SimulationError> {
+) -> Result<Vec<(f64, super::EventKind)>, SimulationError> {
     let dt = world.config().dt;
     let mut remaining = dt;
+    let mut contacts = Vec::new();
     while remaining > 0.0 {
         let mut events = Vec::new();
         for (i, agent) in agents.iter().enumerate() {
@@ -110,14 +111,14 @@ fn resolve_pairs(
             {
                 events.push((0.0, Event::Arrival(i)));
             }
-            for square in world.obstacles() {
+            for (obstacle, square) in world.obstacles().iter().enumerate() {
                 if let Some(time) = square.contact(
                     agent.position,
                     agent.velocity(),
                     config.body_radius,
                     remaining,
                 )? {
-                    events.push((time, Event::Obstacle(i)));
+                    events.push((time, Event::Obstacle(i, obstacle)));
                 }
             }
         }
@@ -153,13 +154,28 @@ fn resolve_pairs(
         events.retain(|(t, _)| (*t - earliest).abs() <= 1e-10 * dt.min(1.0));
         for (_, event) in &events {
             if let Event::Contact(i, j) = *event {
+                contacts.push((
+                    dt - remaining + duration,
+                    super::EventKind::AgentContact {
+                        first: i,
+                        second: j,
+                    },
+                ));
                 for index in [i, j] {
                     agents[index].state = AgentState::Terminated;
                     agents[index].velocity = [0.0; 2];
                     agents[index].drift = [0.0; 2];
                 }
             }
-            if let Event::Obstacle(index) = *event {
+            if let Event::Obstacle(index, obstacle) = *event {
+                contacts.push((
+                    dt - remaining + duration,
+                    super::EventKind::ObstacleContact {
+                        agent: index,
+                        obstacle,
+                        shape: world.obstacles()[obstacle],
+                    },
+                ));
                 agents[index].state = AgentState::Terminated;
                 agents[index].velocity = [0.0; 2];
                 agents[index].drift = [0.0; 2];
@@ -177,7 +193,7 @@ fn resolve_pairs(
         }
         remaining = (remaining - duration).max(0.0);
     }
-    Ok(())
+    Ok(contacts)
 }
 
 fn near_region(

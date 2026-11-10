@@ -35,6 +35,8 @@ pub use scene_preset::ScenePreset;
 #[derive(Debug, Clone)]
 pub struct Simulation {
     config: Config,
+    next_agent_uid: u64,
+    next_group_uid: u64,
     agents: Vec<Agent>,
     steps: u64,
     obstacles: Vec<Rectangle>,

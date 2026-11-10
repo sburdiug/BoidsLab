@@ -102,7 +102,10 @@ impl Simulation {
         if command != Command::FollowRoute {
             self.groups[id].route = None;
         }
-        for agent in &mut self.agents[range] {
+        let start = range.start;
+        let mut changes = Vec::new();
+        for (offset, agent) in self.agents[range].iter_mut().enumerate() {
+            let previous = agent.state;
             if agent.state == AgentState::Terminated {
                 continue;
             }
@@ -129,6 +132,13 @@ impl Simulation {
                 agent.state = AgentState::Moving;
                 agent.velocity = scale(direction, config.speed);
             }
+            if previous != agent.state {
+                changes.push(EventKind::StateChanged {
+                    agent: start + offset,
+                    from: previous,
+                    to: agent.state,
+                });
+            }
         }
         let route = self.groups[id].route.clone();
         self.record(EventKind::CommandChanged {
@@ -136,6 +146,9 @@ impl Simulation {
             command,
             route,
         });
+        for change in changes {
+            self.record(change);
+        }
         Ok(())
     }
 }

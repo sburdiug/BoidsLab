@@ -30,6 +30,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         waypoints,
         route_radius,
         trace_path,
+        trace_every,
         scene_path,
     }) = Options::parse(env::args().skip(1))?
     else {
@@ -126,12 +127,22 @@ fn run() -> Result<(), Box<dyn Error>> {
         .transpose()?;
     let mut event_cursor = 0;
     if let Some(out) = &mut trace {
-        write_snapshot(out, &world, seed, spawn_radius, "snapshot", event_cursor)?;
+        write_snapshot(
+            out,
+            &world,
+            seed,
+            spawn_radius,
+            "snapshot",
+            event_cursor,
+            false,
+        )?;
         event_cursor = world.events().len();
     }
     for _ in 0..steps {
         world.step()?;
-        if let Some(out) = &mut trace {
+        if let Some(out) = &mut trace
+            && (world.steps() % trace_every == 0 || world.steps() == steps)
+        {
             write_snapshot(
                 out,
                 &world,
@@ -143,6 +154,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                     "snapshot"
                 },
                 event_cursor,
+                false,
             )?;
             event_cursor = world.events().len();
         }
@@ -151,7 +163,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         out.flush()?;
     }
     let mut out = io::BufWriter::new(io::stdout().lock());
-    write_snapshot(&mut out, &world, seed, spawn_radius, "horizon", 0)?;
+    write_snapshot(&mut out, &world, seed, spawn_radius, "horizon", 0, true)?;
     out.flush()?;
     Ok(())
 }

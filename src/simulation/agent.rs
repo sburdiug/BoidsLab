@@ -10,6 +10,7 @@ pub enum AgentState {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Agent {
     pub(super) group_id: usize,
+    pub(super) uid: u64,
     pub(super) position: [f64; 2],
     pub(super) velocity: [f64; 2],
     pub(super) settled_time: f64,
@@ -32,6 +33,7 @@ impl Agent {
         ))?;
         Ok(Self {
             group_id: 0,
+            uid: 0,
             position,
             velocity,
             settled_time: 0.0,
@@ -42,6 +44,11 @@ impl Agent {
             waypoint_index: 0,
             route_offset: 0.0,
         })
+    }
+
+    /// Stable within a simulation run; storage indices may change.
+    pub fn uid(&self) -> u64 {
+        self.uid
     }
 
     pub fn group_id(&self) -> usize {

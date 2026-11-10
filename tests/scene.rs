@@ -60,6 +60,18 @@ fn swept_obstacle_contact_cannot_tunnel_and_rounded_corners_are_exact() {
     world.set_command(Command::Move([1.0, 0.0])).unwrap();
     world.step().unwrap();
     assert_eq!(world.agents()[0].state(), AgentState::Terminated);
+    let contact = world
+        .events()
+        .iter()
+        .find(|e| {
+            matches!(
+                e.kind,
+                rust_playground::simulation::EventKind::ObstacleContact { .. }
+            )
+        })
+        .unwrap();
+    assert_eq!(contact.agent_uids, [world.agents()[0].uid()]);
+    assert!(contact.time > 0.0 && contact.time < config.dt);
     assert!((world.agents()[0].position()[0] + 1.025).abs() < 1e-9);
 
     let mut world = copters(

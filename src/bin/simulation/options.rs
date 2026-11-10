@@ -44,6 +44,7 @@ Distances are metres, time seconds, and speeds metres per second.
   --route-radius R            Alias for corridor half-width
   --obstacle-clearance R      Extra planning clearance (default: 0.15)
   --obstacle-weight W         Nonnegative obstacle avoidance cost (default: 1)
+  --trace-every N             Record every N steps (default: 1); keep all events
   --trace PATH                Create a new JSONL file with every state snapshot
   --help                      Show this help
 
@@ -105,6 +106,7 @@ pub(super) struct Options {
     pub noises: Vec<NoiseZone>,
     pub waypoints: Vec<[f64; 2]>,
     pub route_radius: Option<f64>,
+    pub trace_every: u64,
     pub trace_path: Option<String>,
     pub scene_path: Option<String>,
 }
@@ -125,6 +127,7 @@ impl Options {
         let mut noises = Vec::new();
         let mut waypoints = Vec::new();
         let mut route_radius = None;
+        let mut trace_every = 1;
         let mut trace_path: Option<String> = None;
         let mut scene_path: Option<String> = None;
         while let Some(flag) = args.next() {
@@ -187,6 +190,12 @@ impl Options {
                         _ => return Err("interaction must be react, avoid or ignore".into()),
                     };
                     interactions.push((source, target, mode));
+                }
+                "--trace-every" => {
+                    trace_every = value(&mut args, &flag)?;
+                    if trace_every == 0 {
+                        return Err("trace interval must be positive".into());
+                    }
                 }
                 "--steps" => steps = value(&mut args, &flag)?,
                 "--seed" => seed = value(&mut args, &flag)?,
@@ -357,6 +366,7 @@ impl Options {
             waypoints,
             route_radius,
             trace_path,
+            trace_every,
             scene_path,
         }))
     }

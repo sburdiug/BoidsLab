@@ -14,6 +14,8 @@ impl Simulation {
             return Err(SimulationError::NumericOverflow);
         }
         let mut next = self.agents.clone();
+        let start_time = self.time();
+        let mut contacts = Vec::new();
         if self.groups.iter().any(|g| g.command() != Command::Hold)
             || !self.wind_zones.is_empty()
             || !self.noise_zones.is_empty()
@@ -141,7 +143,7 @@ impl Simulation {
                 }
             }
             self.reconcile_controlled_requests(&observed, &mut next, &grid)?;
-            resolve_motion(self, &mut next)?;
+            contacts = resolve_motion(self, &mut next)?;
         }
         let changes: Vec<_> = self
             .agents
@@ -157,6 +159,9 @@ impl Simulation {
             .collect();
         self.agents = next;
         self.steps = steps;
+        for (offset, event) in contacts {
+            self.record_at(event, start_time + offset);
+        }
         for change in changes {
             self.record(change);
         }

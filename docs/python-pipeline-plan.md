@@ -1,6 +1,6 @@
 # Python analysis pipeline — implementation handoff
 
-Status: design, not implemented. Reviewed 2026-11-10 against Rust commit `b7894dbe7153f08d58f2d2b3d6721e76e22f6426`.
+Status: design, not implemented. **Update 2026-11-10:** the export is now `boids-2d-v13` / schema 2; use stable `uid`, contact events, `event_scope`, and optional `--trace-every`. See [current export notes](playground.md#export-format-v13). The v12-specific statements below are historical and must be adapted before implementation. Reviewed 2026-11-10 against Rust commit `b7894dbe7153f08d58f2d2b3d6721e76e22f6426`.
 
 Implement the first useful analysis workflow: a few verified runs, reproducible experiments, CSV metrics and readable plots. Rust remains the only simulation engine. Do not rewrite its movement rules in Python. Read [the architecture review](architecture-review-2026-11-10.md) before implementation. The [Ukrainian overview](python-pipeline-plan.uk.md) summarizes the decisions; this English document is the implementation contract.
 

@@ -18,6 +18,7 @@ pub struct SpawnConfig {
 #[derive(Debug, Clone)]
 pub struct Group {
     pub(super) id: GroupId,
+    pub(super) uid: u64,
     pub(super) config: Config,
     pub(super) spawn: SpawnConfig,
     pub(super) command: Command,
@@ -30,6 +31,7 @@ pub struct Group {
 impl Group {
     pub(super) fn new(
         id: GroupId,
+        uid: u64,
         config: Config,
         spawn: SpawnConfig,
         command: Command,
@@ -38,6 +40,7 @@ impl Group {
     ) -> Self {
         Self {
             id,
+            uid,
             seeded,
             config,
             spawn,
@@ -51,6 +54,11 @@ impl Group {
     pub fn is_seeded(&self) -> bool {
         self.seeded
     }
+    /// Stable within a simulation run; storage indices may change.
+    pub fn uid(&self) -> u64 {
+        self.uid
+    }
+
     pub fn id(&self) -> GroupId {
         self.id
     }
@@ -99,6 +107,8 @@ impl Simulation {
         config.validate()?;
         Ok(Self {
             config,
+            next_agent_uid: 0,
+            next_group_uid: 0,
             agents: Vec::new(),
             steps: 0,
             obstacles: Vec::new(),
@@ -123,6 +133,10 @@ impl Simulation {
             .agents
             .clone();
         let count = range.len();
+        self.record(EventKind::GroupRemoved {
+            group: id,
+            agents: count,
+        });
         self.agents.drain(range);
         self.groups.remove(id);
         for group in &mut self.groups {
@@ -143,10 +157,6 @@ impl Simulation {
                 agent.group_id -= 1;
             }
         }
-        self.record(EventKind::GroupRemoved {
-            group: id,
-            agents: count,
-        });
         Ok(())
     }
     pub fn agent_config(&self, index: usize) -> Config {

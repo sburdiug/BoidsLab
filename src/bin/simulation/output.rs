@@ -148,6 +148,7 @@ pub(super) fn write_snapshot(
     spawn_radius: f64,
     reason: &str,
     event_start: usize,
+    full_history: bool,
 ) -> Result<(), Box<dyn Error>> {
     let count = world.agents().len();
     let measured: Vec<_> = (0..count)
@@ -156,7 +157,12 @@ pub(super) fn write_snapshot(
     let states = |s| world.agents().iter().filter(|a| a.state() == s).count();
     write!(
         out,
-        "{{\"model\":\"boids-2d-v12\",\"units\":{{\"length\":\"m\",\"time\":\"s\",\"speed\":\"m/s\"}},\"completion_reason\":\"{reason}\",\"seed\":{seed},\"spawn_radius\":{spawn_radius},\"steps\":{},\"time\":{},\"initial_agents\":{count},\"moving\":{},\"arrived\":{},\"terminated\":{},\"config\":",
+        "{{\"model\":\"boids-2d-v13\",\"schema_version\":2,\"event_scope\":\"{}\",\"units\":{{\"length\":\"m\",\"time\":\"s\",\"speed\":\"m/s\"}},\"completion_reason\":\"{reason}\",\"steps\":{},\"time\":{},\"initial_agents\":{count},\"moving\":{},\"arrived\":{},\"terminated\":{},\"legacy\":{{\"seed\":{seed},\"spawn_radius\":{spawn_radius},\"config\":",
+        if full_history {
+            "full_history"
+        } else {
+            "incremental"
+        },
         world.steps(),
         world.time(),
         states(AgentState::Moving),
@@ -166,7 +172,7 @@ pub(super) fn write_snapshot(
     config(out, world.config())?;
     write!(out, ",\"command\":")?;
     command(out, world.command(), world.route())?;
-    write!(out, ",\"groups\":[")?;
+    write!(out, "}},\"groups\":[")?;
     for (i, g) in world.groups().iter().enumerate() {
         write!(
             out,
@@ -190,7 +196,7 @@ pub(super) fn write_snapshot(
                 if j == 0 { "" } else { "," }
             )?;
         }
-        write!(out, "]}}")?;
+        write!(out, "],\"uid\":{}}}", g.uid())?;
     }
     write!(out, "],\"paths\":[")?;
     for (i, r) in world.paths().iter().enumerate() {
@@ -214,9 +220,29 @@ pub(super) fn write_snapshot(
             "{}{{\"sequence\":{sequence},\"step\":{},\"time\":{},",
             if i == 0 { "" } else { "," },
             e.step,
-            e.step as f64 * world.config().dt
+            e.time
+        )?;
+        write!(
+            out,
+            "\"group_uids\":{:?},\"agent_uids\":{:?},",
+            e.group_uids, e.agent_uids
         )?;
         match &e.kind {
+            EventKind::AgentContact { first, second } => write!(
+                out,
+                "\"type\":\"agent_contact\",\"first\":{first},\"second\":{second}"
+            )?,
+            EventKind::ObstacleContact {
+                agent,
+                obstacle,
+                shape,
+            } => {
+                write!(
+                    out,
+                    "\"type\":\"obstacle_contact\",\"agent\":{agent},\"obstacle_index\":{obstacle},\"geometry\":"
+                )?;
+                scene(out, &[*shape], &[], &[])?;
+            }
             EventKind::GroupRemoved { group, agents } => write!(
                 out,
                 "\"type\":\"group_removed\",\"group\":{group},\"agents\":{agents}"
@@ -319,10 +345,31 @@ pub(super) fn write_snapshot(
         let comma = if id == 0 { "" } else { "," };
         write!(
             out,
-            "{comma}{{\"group_id\":{},\"id\":{id},\"position\":[{x},{y}],\"measured_position\":[{mx},{my}],\"velocity\":[{vx},{vy}],\"air_velocity\":[{avx},{avy}],\"wind_velocity\":[{wx},{wy}],\"waypoint_index\":{},\"state\":\"{state}\"}}",
+            "{comma}{{\"group_id\":{},\"id\":{id},\"position\":[{x},{y}],\"measured_position\":[{mx},{my}],\"velocity\":[{vx},{vy}],\"air_velocity\":[{avx},{avy}],\"wind_velocity\":[{wx},{wy}],\"waypoint_index\":{},\"state\":\"{state}\",\"uid\":{},\"group_uid\":{},\"task_observation\":",
             agent.group_id(),
-            agent.waypoint_index()
+            agent.waypoint_index(),
+            agent.uid(),
+            world.group(agent.group_id()).unwrap().uid()
         )?;
+        let group = world.group(agent.group_id()).unwrap();
+        let target = match group.command() {
+            Command::Gather { center, radius } => Some((center, radius)),
+            Command::FollowRoute => group
+                .route()
+                .map(|r| (*r.points().last().unwrap(), r.radius())),
+            _ => None,
+        };
+        if let Some((center, radius)) = target {
+            let distance = (x - center[0]).hypot(y - center[1]);
+            write!(
+                out,
+                "{{\"target_distance\":{distance},\"inside_preferred_area\":{}}}",
+                distance <= radius
+            )?;
+        } else {
+            write!(out, "null")?;
+        }
+        write!(out, "}}")?;
     }
     writeln!(out, "]}}")?;
     Ok(())

@@ -1,6 +1,46 @@
 use std::process::Command;
 
 #[test]
+fn trace_interval_keeps_initial_final_and_intermediate_events() {
+    let path = std::env::temp_dir().join(format!(
+        "swarm-interval-{}-{}.jsonl",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let output = Command::new(env!("CARGO_BIN_EXE_simulation"))
+        .args([
+            "--agents",
+            "1",
+            "--steps",
+            "5",
+            "--trace-every",
+            "3",
+            "--hold",
+            "--trace",
+        ])
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let trace = std::fs::read_to_string(&path).unwrap();
+    let lines: Vec<_> = trace.lines().collect();
+    assert_eq!(lines.len(), 3);
+    assert!(lines[0].contains("\"steps\":0"));
+    assert!(lines[1].contains("\"steps\":3"));
+    assert!(lines[2].contains("\"steps\":5"));
+    assert!(lines[0].contains("\"group_added\""));
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("\"event_scope\":\"full_history\"")
+    );
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
 fn headless_run_reports_the_completed_horizon() {
     let output = Command::new(env!("CARGO_BIN_EXE_simulation"))
         .args([
@@ -242,7 +282,7 @@ fn single_agent_commands_report_arrival() {
         let summary = String::from_utf8(output.stdout).unwrap();
         assert!(summary.contains("\"arrived\":1"));
         assert!(summary.contains("\"terminated\":0"));
-        assert!(summary.contains("\"model\":\"boids-2d-v12\""));
+        assert!(summary.contains("\"model\":\"boids-2d-v13\""));
     }
 }
 

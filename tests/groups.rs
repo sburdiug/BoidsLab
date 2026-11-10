@@ -24,6 +24,17 @@ fn removing_a_group_reindexes_agents_and_directed_interactions() {
     let last_position = world.agents()[2].position();
     assert!(world.remove_group(3).is_err());
     world.remove_group(1).unwrap();
+    assert_eq!(world.group(1).unwrap().uid(), 2);
+    assert_eq!(world.agents()[1].uid(), 2);
+    let removed = world.events().last().unwrap();
+    assert_eq!(removed.group_uids, [1]);
+    assert_eq!(removed.agent_uids, [1]);
+    world
+        .add_group(config, spawn([15.0, 0.0], 1, 8), Command::Hold)
+        .unwrap();
+    assert_eq!(world.group(2).unwrap().uid(), 3);
+    assert_eq!(world.agents()[2].uid(), 3);
+    world.remove_group(2).unwrap();
     assert_eq!(world.groups().len(), 2);
     assert_eq!(world.agents().len(), 2);
     assert_eq!(world.agents()[1].position(), last_position);

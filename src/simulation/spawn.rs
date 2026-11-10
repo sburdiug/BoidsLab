@@ -45,8 +45,14 @@ impl Simulation {
             radius: 3.0,
             seed: 0,
         };
+        for (i, agent) in agents.iter_mut().enumerate() {
+            agent.uid = i as u64;
+        }
+        world.next_agent_uid = count as u64;
+        world.next_group_uid = 1;
         world.agents = agents;
         world.groups.push(super::Group::new(
+            0,
             0,
             config,
             spawn,
@@ -161,25 +167,37 @@ impl Simulation {
         validated.set_command(command)?;
         let id = self.groups.len();
         let start = self.agents.len();
+        let next_agent_uid = self
+            .next_agent_uid
+            .checked_add(spawn.count as u64)
+            .ok_or(SimulationError::NumericOverflow)?;
+        let next_group_uid = self
+            .next_group_uid
+            .checked_add(1)
+            .ok_or(SimulationError::NumericOverflow)?;
         self.agents
             .try_reserve(spawn.count)
             .map_err(|_| SimulationError::InvalidInput("agent count cannot be allocated"))?;
         self.groups
             .try_reserve(1)
             .map_err(|_| SimulationError::InvalidInput("group cannot be allocated"))?;
-        for a in &mut validated.agents {
+        for (i, a) in validated.agents.iter_mut().enumerate() {
             a.group_id = id;
+            a.uid = self.next_agent_uid + i as u64;
         }
         self.agents.extend(validated.agents);
         let command = validated.groups[0].command;
         self.groups.push(Group::new(
             id,
+            self.next_group_uid,
             config,
             spawn,
             command,
             start..self.agents.len(),
             true,
         ));
+        self.next_agent_uid = next_agent_uid;
+        self.next_group_uid = next_group_uid;
         self.record(EventKind::GroupAdded {
             seeded: true,
             group: id,
