@@ -1,14 +1,34 @@
-# Swarm simulator
+# BoidsLab
+
+[Українська версія](README.uk.md)
 
 A 2D, fixed-step multi-agent simulation with a local Boids model, an interactive playground, and a headless CLI. It is a research prototype, not a calibrated UAV simulator. The current model is `boids-2d-v14`, JSON schema 2.
 
-## Run
+The project lets you build scenes, control multiple groups and study how their behavior changes with the parameters. A Python analysis tool runs repeatable CLI experiments and generates plots and reports.
+
+## What you can do
+
+- Create independent groups and adjust separation, alignment, cohesion, speed, perception and body size.
+- Guide a group toward a soft gathering area, along a wide route corridor, or let it move freely using Boids rules.
+- Add several rotated rectangular obstacles, wind and measurement-noise regions; save and reload environment presets.
+- Set directed interactions between groups and record physical contacts, including when groups ignore one another.
+- Run headless scenarios with a fixed seed and analyze recorded positions and events in Python.
+
+## Getting started
+
+Install the [Rust toolchain](https://www.rust-lang.org/tools/install) with Cargo. The viewer is an optional Cargo feature. The analysis workflow additionally requires Python 3.11 or newer, NumPy and Matplotlib; installation instructions are below.
+
+From the project directory:
 
 ```powershell
 cargo run --release --features viewer --bin viewer
 cargo run --release --bin simulation -- --agents 10 --steps 600 --seed 42
 cargo run --release --bin simulation -- --help
 ```
+
+The first command opens the interactive playground. The second runs a simulation without a window and prints a JSON summary. The first build downloads the required Rust dependencies.
+
+## Interactive playground
 
 The viewer opens an empty paused scene. In **Group**, enter the count, seed and spawn radius; select **Add [A]** and click on the field. Add several groups, select one with Prev/Next or by clicking an agent, then give that group a command. Groups can be added while running. **Flight** and **Swarm** edit the selected group's profile; pause and choose **Apply profile** to apply changes. The scene has one shared time step.
 
@@ -46,6 +66,21 @@ Run one environment with different groups, for example `cargo run --release --bi
 
 Stdout contains a JSON summary with full event history. `--trace` exclusively creates JSONL with the initial and final frames and every `--trace-every N` steps (default 1); existing files are not overwritten. Frames carry incremental events, including contacts between saved snapshots. Use agent/group `uid` for identity; storage indices can change. Group parameters live in `groups`; `legacy` is only the former single-group view. See [export contract](docs/playground.md#export-format-v13) and the [Python analyzer](analysis/README.md). Traces are analysis data, not a replay player.
 
+### Run a first experiment
+
+Build the headless simulator, install the Python analysis package, and run the small control suite. In PowerShell on Windows:
+
+```powershell
+cargo build --release --bin simulation
+cd analysis
+python -m pip install -e .
+python -m swarm_analysis run experiments/smoke.json --binary ../target/release/simulation.exe --output ../work/analysis/smoke --timeout 60
+```
+
+On other platforms, use the corresponding executable path, typically `../target/release/simulation`. Choose a new output directory for each suite; the runner does not overwrite an existing one. Open `work/analysis/smoke/report.md` from the project root to inspect the results.
+
+The suite stores raw JSON and traces, per-frame CSV metrics, trajectory and dynamics plots, and an aggregated report. Metrics include contacts, agent states, arrival thresholds, speed, polarization, spread, connectivity and route occupancy. A successful process does not necessarily mean the task was completed or that no collision occurred. See the [analysis guide](analysis/README.md) for the experiment format, additional commands and metric definitions.
+
 ## Verification and limits
 
 ```powershell
@@ -54,6 +89,8 @@ cargo clippy --all-targets --all-features --locked --offline -- -D warnings
 cargo fmt --check
 ```
 
-The tests cover fixed-step motion in SI units, the individual Boids rules, deterministic seeding, directed group policies, multi-obstacle editing and contacts, preset roundtrips, routes, noise/wind, gathering, wall perception and JSON output. Repeatable seed does not imply cross-platform bitwise equality. The viewer has no artificial agent-count cap, but dense scenes and pairwise spawn checks can be expensive; previous benchmarks in [performance.md](docs/performance.md) are historical v5 measurements and do not establish current GUI performance. There is no 3D mode, replay viewer, batch experiment runner or Python analyzer yet.
+The tests cover fixed-step motion in SI units, the individual Boids rules, deterministic seeding, directed group policies, multi-obstacle editing and contacts, preset roundtrips, routes, noise/wind, gathering, wall perception and JSON output. To test the Python analyzer, run `python -m unittest discover -s tests` from `analysis/` after installing its dependencies.
+
+Repeatable seed does not imply cross-platform bitwise equality. The viewer has no artificial agent-count cap, but dense scenes and pairwise spawn checks can be expensive; previous benchmarks in [performance.md](docs/performance.md) are historical v5 measurements and do not establish current GUI performance. The analyzer supports static CLI scenes; its pairwise metrics have an explicit calculation limit. There is no 3D mode or replay viewer yet. Future research questions and 3D ideas are described in the [research roadmap](docs/research-roadmap-2d-3d.md).
 
 [Ukrainian version](README.uk.md) · [Architecture](docs/architecture.md) · [Playground details](docs/playground.md)

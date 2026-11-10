@@ -15,7 +15,7 @@ impl App {
     pub(super) fn draw_playback(&mut self) -> bool {
         draw_rectangle(0.0, 0.0, PANEL, screen_height(), SURFACE);
         draw_rectangle(0.0, 0.0, screen_width(), HEADER, SURFACE);
-        label("SWARM SIMULATOR", 16.0, 32.0, 25.0, TEXT);
+        label("BOIDSLAB", 16.0, 32.0, 25.0, TEXT);
         label("2D / fixed-step core", 16.0, 55.0, 17.0, MUTED);
         if button(
             "New scene",

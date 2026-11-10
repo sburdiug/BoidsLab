@@ -6,7 +6,7 @@ use macroquad::{
 
 pub(crate) fn window_conf() -> Conf {
     Conf {
-        window_title: "Swarm Simulator".into(),
+        window_title: "BoidsLab".into(),
         window_width: 1200,
         window_height: 820,
         window_resizable: true,
