@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "name": "smoke",
+  "cases": [
+    {
+      "name": "empty_zero",
+      "grid": {},
+      "args": [
+        "--empty",
+        "--steps",
+        "0"
+      ]
+    },
+    {
+      "name": "empty_three",
+      "grid": {},
+      "args": [
+        "--empty",
+        "--steps",
+        "3"
+      ]
+    },
+    {
+      "name": "free_one",
+      "grid": {},
+      "args": [
+        "--agents",
+        "1",
+        "--steps",
+        "20"
+      ]
+    },
+    {
+      "name": "hold_one",
+      "grid": {},
+      "args": [
+        "--agents",
+        "1",
+        "--steps",
+        "20",
+        "--hold"
+      ]
+    },
+    {
+      "name": "gather_one",
+      "grid": {},
+      "args": [
+        "--steps",
+        "100",
+        "--group",
+        "-3",
+        "0",
+        "1",
+        "0.001",
+        "7",
+        "boids",
+        "--gather",
+        "0",
+        "0",
+        "1"
+      ]
+    }
+  ]
+}
