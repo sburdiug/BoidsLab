@@ -37,6 +37,8 @@ def load_manifest(path):
         for values in grid.values():
             if not isinstance(values, list) or not values or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in values):
                 raise ValueError("grid values must be nonempty finite numbers")
+            if len(set(values)) != len(values):
+                raise ValueError("duplicate grid values produce duplicate trials")
         keys = sorted(grid)
         for values in itertools.product(*(grid[k] for k in keys)):
             params = dict(zip(keys, values))

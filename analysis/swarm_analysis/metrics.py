@@ -1,4 +1,25 @@
+import json
+from collections import Counter
+from itertools import groupby
 import numpy as np
+
+
+def arrival_thresholds(initial, events):
+    """First completed tick with >=90% arrived, including ticks between snapshots."""
+    agents = {a["uid"]: a for a in initial["agents"]}
+    sizes = Counter(a["group_uid"] for a in agents.values())
+    counts = Counter(a["group_uid"] for a in agents.values() if a["state"] == "arrived")
+    applicable = {g["uid"] for g in initial["groups"] if g["command"]["type"] in ("gather", "route")}
+    result = {uid: 0 for uid in applicable if sizes[uid] and counts[uid] / sizes[uid] >= .9}
+    for step, batch in groupby(events, key=lambda e: e["step"]):
+        for event in batch:
+            if step and event["type"] == "state_changed":
+                uid = agents[event["agent_uids"][0]]["group_uid"]
+                counts[uid] += int(event["to"] == "arrived") - int(event["from"] == "arrived")
+        for uid in applicable - result.keys():
+            if sizes[uid] and counts[uid] / sizes[uid] >= .9:
+                result[uid] = step
+    return result
 
 
 def route_distances(points, route):
@@ -47,5 +68,18 @@ def frame_metrics(frame, pair_limit=2_000_000):
             if command["type"] == "route":
                 dist = route_distances(p, command["points"])
                 row.update(route_error_median=float(np.median(dist)), route_error_max=float(dist.max()), corridor_excess_max=float(np.maximum(0, dist-command["radius"]).max()))
+        reasons = {}
+        for key, value in row.items():
+            if value is not None: continue
+            if key == "min_body_gap":
+                reasons[key] = "pair_limit" if len(live)**2 > pair_limit else "fewer_than_two_living_agents"
+            elif key == "nearest_neighbor":
+                reasons[key] = "pair_limit" if len(alive)**2 > pair_limit else "fewer_than_two_living_agents"
+            elif key in ("target_distance", "inside_fraction") and group["command"]["type"] != "gather": reasons[key] = "not_applicable"
+            elif key.startswith("route_") or key == "corridor_excess_max": reasons[key] = "not_applicable" if group["command"]["type"] != "route" else "no_living_agents"
+            elif key == "polarization": reasons[key] = "no_moving_living_agents"
+            else: reasons[key] = "no_living_agents"
+        row["undefined_reasons"] = json.dumps(reasons, sort_keys=True)
+        row["min_body_gap_scope"] = "world"
         rows.append(row)
     return rows

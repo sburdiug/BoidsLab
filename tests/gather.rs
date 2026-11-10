@@ -35,7 +35,13 @@ fn fly_target_is_the_center_of_the_area_from_every_direction() {
 
 #[test]
 fn a_small_region_is_accepted_without_fitting_a_preassigned_formation() {
-    let mut world = parked(Config::default(), &[[-4.0, 0.0], [-3.9, 0.0], [4.0, 0.0]]);
+    let mut world = parked(
+        Config {
+            body_radius: 0.025,
+            ..Config::default()
+        },
+        &[[-4.0, 0.0], [-3.9, 0.0], [4.0, 0.0]],
+    );
     world
         .set_command(Command::Gather {
             center: [0.0, 0.0],

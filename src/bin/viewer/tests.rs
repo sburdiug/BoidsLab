@@ -12,6 +12,7 @@ use rust_playground::simulation::Route;
 fn scene_tools_validate_properties_and_restart_preserves_the_scene_and_route() {
     let settings = Settings::default();
     let mut world = settings.build().unwrap();
+    assert_eq!(world.config().body_radius, 0.1);
     let mut properties = ObjectProperties::default();
     properties
         .create(Tool::Rectangle, [5.0, 0.0], None)

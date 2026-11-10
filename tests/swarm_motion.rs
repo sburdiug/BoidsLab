@@ -89,6 +89,7 @@ fn spread_sets_local_spacing_instead_of_a_ring_and_keeps_isolated_agents_in_plac
     let mut world = copters(
         Config {
             neighbor_radius: 2.0,
+            body_radius: 0.025,
             ..Config::default()
         },
         &positions,
@@ -118,7 +119,13 @@ fn spread_sets_local_spacing_instead_of_a_ring_and_keeps_isolated_agents_in_plac
 
 #[test]
 fn unobservable_or_unsafe_spread_gaps_are_rejected_atomically() {
-    let mut world = copters(Config::default(), &[[0.0, 0.0], [0.2, 0.0]]);
+    let mut world = copters(
+        Config {
+            body_radius: 0.025,
+            ..Config::default()
+        },
+        &[[0.0, 0.0], [0.2, 0.0]],
+    );
     let before = world.agents().to_vec();
     for spacing in [0.0, 0.01, 1.001, f64::NAN] {
         assert!(world.set_command(Command::Spread { spacing }).is_err());
@@ -135,6 +142,7 @@ fn obstacle_contact_still_kills_when_perception_is_too_short_to_brake() {
             speed: 4.0,
             dt: 0.5,
             neighbor_radius: 0.3,
+            body_radius: 0.025,
             ..Config::default()
         },
         vec![Agent::new([-1.6, 0.0], [1.0, 0.0]).unwrap()],

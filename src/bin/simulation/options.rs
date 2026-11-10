@@ -22,7 +22,7 @@ Distances are metres, time seconds, and speeds metres per second.
   --turn-response M           Free Boids heading response in [0, 1] (default: 0.1)
   --neighbor-radius R         Omnidirectional perception radius (default: 1)
   --separation-radius R       Separation activation radius (default: 0.3)
-  --body-radius R             Physical body radius (default: 0.025)
+  --body-radius R             Physical body radius (default: 0.1)
   --separation-weight W        Nonnegative rule weight (default: 10)
   --alignment-weight W         Nonnegative rule weight (default: 1)
   --cohesion-weight W          Nonnegative rule weight (default: 3)

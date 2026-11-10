@@ -51,6 +51,7 @@ fn swept_obstacle_contact_cannot_tunnel_and_rounded_corners_are_exact() {
         dt: 1.0,
         speed: 10.0,
         obstacle_weight: 0.0,
+        body_radius: 0.025,
         ..Config::default()
     };
     let mut world = copters(config, &[[-3.0, 0.0]]);
@@ -79,6 +80,7 @@ fn swept_obstacle_contact_cannot_tunnel_and_rounded_corners_are_exact() {
             dt: 1.0,
             speed: 0.05,
             obstacle_weight: 0.0,
+            body_radius: 0.025,
             ..Config::default()
         },
         &[[-1.04, -1.01]],
@@ -205,6 +207,7 @@ fn wind_driven_swept_contacts_are_not_limited_to_the_airspeed_reach() {
         Config {
             dt: 1.0,
             separation_weight: 0.0,
+            body_radius: 0.025,
             ..Config::default()
         },
         &[[-2.0, 0.0], [2.0, 0.0]],
@@ -346,6 +349,7 @@ fn a_rotated_square_has_exact_contacts_and_can_be_detoured() {
             dt: 1.0,
             speed: 10.0,
             obstacle_weight: 0.0,
+            body_radius: 0.025,
             ..Config::default()
         },
         &[[-3.0, 0.0]],
@@ -356,7 +360,13 @@ fn a_rotated_square_has_exact_contacts_and_can_be_detoured() {
     assert_eq!(fast.agents()[0].state(), AgentState::Terminated);
     assert!((fast.agents()[0].position()[0] + 2.0_f64.sqrt() + 0.025).abs() < 1e-9);
 
-    let mut world = copters(Config::default(), &[[-3.0, 0.0]]);
+    let mut world = copters(
+        Config {
+            body_radius: 0.025,
+            ..Config::default()
+        },
+        &[[-3.0, 0.0]],
+    );
     world.set_obstacle(Some(obstacle.into())).unwrap();
     world
         .set_command(Command::Gather {

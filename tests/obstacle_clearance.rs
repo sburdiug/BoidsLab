@@ -5,7 +5,10 @@ fn copters_keep_moving_along_a_face_when_inside_the_planning_gap() {
     for angle in [0.0, 0.03, -0.03] {
         for count in [1, 2] {
             let mut world = Simulation::new(
-                Config::default(),
+                Config {
+                    body_radius: 0.025,
+                    ..Config::default()
+                },
                 (0..count)
                     .map(|i| Agent::new([1.11, -0.6 + i as f64 * 0.45], [0.0, 1.0]).unwrap())
                     .collect(),

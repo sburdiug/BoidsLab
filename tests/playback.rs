@@ -120,6 +120,7 @@ fn collision_markers_remain_at_the_actual_contact_positions() {
         separation_weight: 0.0,
         alignment_weight: 0.0,
         cohesion_weight: 0.0,
+        body_radius: 0.025,
         ..Config::default()
     };
     let mut simulation = Simulation::new(

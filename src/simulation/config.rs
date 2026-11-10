@@ -28,7 +28,7 @@ impl Default for Config {
             turn_response: 0.1,
             neighbor_radius: 1.0,
             separation_radius: 0.3,
-            body_radius: 0.025,
+            body_radius: 0.1,
             separation_weight: 10.0,
             alignment_weight: 1.0,
             cohesion_weight: 3.0,

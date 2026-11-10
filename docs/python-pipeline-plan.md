@@ -1,6 +1,6 @@
 # Python analysis pipeline — implementation handoff
 
-Status: design, not implemented. **Update 2026-11-10:** the export is now `boids-2d-v13` / schema 2; use stable `uid`, contact events, `event_scope`, and optional `--trace-every`. See [current export notes](playground.md#export-format-v13). The v12-specific statements below are historical and must be adapted before implementation. Reviewed 2026-11-10 against Rust commit `b7894dbe7153f08d58f2d2b3d6721e76e22f6426`.
+Status: historical design, superseded by the implemented [analyzer README](../analysis/README.md) and [fix status](current-issues-and-fixes.md). **Update 2026-11-10:** the export is now `boids-2d-v13` / schema 2; use stable `uid`, contact events, `event_scope`, and optional `--trace-every`. See [current export notes](playground.md#export-format-v13). The v12-specific statements below are historical and must be adapted before implementation. Reviewed 2026-11-10 against Rust commit `b7894dbe7153f08d58f2d2b3d6721e76e22f6426`.
 
 Implement the first useful analysis workflow: a few verified runs, reproducible experiments, CSV metrics and readable plots. Rust remains the only simulation engine. Do not rewrite its movement rules in Python. Read [the architecture review](architecture-review-2026-11-10.md) before implementation. The [Ukrainian overview](python-pipeline-plan.uk.md) summarizes the decisions; this English document is the implementation contract.
 
@@ -64,7 +64,7 @@ Example (an actual valid starting manifest):
       "--group", "0", "0", "20", "3", "${seed}", "boids",
       "--speed", "1", "--turn-response", "0.1",
       "--neighbor-radius", "1", "--separation-radius", "0.3",
-      "--body-radius", "0.025", "--separation-weight", "10",
+      "--body-radius", "0.1", "--separation-weight", "10",
       "--alignment-weight", "${alignment}", "--cohesion-weight", "3",
       "--command-weight", "15", "--obstacle-clearance", "0.15",
       "--obstacle-weight", "1", "--route-centering", "0.25",

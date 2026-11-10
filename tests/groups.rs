@@ -232,6 +232,7 @@ fn rectangular_obstacles_keep_exact_swept_contacts() {
         speed: 10.0,
         dt: 1.0,
         obstacle_weight: 0.0,
+        body_radius: 0.025,
         ..Config::default()
     };
     let mut w = Simulation::empty(cfg).unwrap();
@@ -270,6 +271,7 @@ fn gathering_uses_nearby_free_space_instead_of_visiting_the_center() {
 fn a_large_soft_region_spreads_a_dense_cluster_without_forcing_a_perimeter() {
     let cfg = Config {
         neighbor_radius: 3.0,
+        body_radius: 0.025,
         ..Config::default()
     };
     let positions: Vec<_> = [-0.15, 0.0, 0.15]
@@ -318,6 +320,7 @@ fn multiple_obstacles_are_preserved_and_all_stop_agents() {
         speed: 10.0,
         dt: 1.0,
         obstacle_weight: 0.0,
+        body_radius: 0.025,
         ..Config::default()
     };
     let mut w = Simulation::new(cfg, vec![Agent::new([-4.0, 3.0], [1.0, 0.0]).unwrap()]).unwrap();

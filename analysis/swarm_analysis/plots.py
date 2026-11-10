@@ -8,6 +8,26 @@ import numpy as np
 from matplotlib import transforms
 
 
+def alignment_figure(aggregate, path):
+    alignment = [a for a in aggregate if a["case"] == "free_boids" and "alignment" in a["parameters"]]
+    if not alignment:
+        return False
+    fig, ax = plt.subplots(figsize=(7, 4))
+    for item in alignment:
+        x = item["parameters"]["alignment"]
+        for value in item["seed_values"]:
+            if value["polarization"] is not None:
+                ax.scatter(x, value["polarization"], color="steelblue", alpha=.6)
+        if item["polarization_mean"] is not None:
+            ax.errorbar(x, item["polarization_mean"], yerr=item["polarization_sd"] or 0, fmt="o", color="black", capsize=4)
+    ax.set(xlabel="Alignment weight", ylabel="Final polarization", title="Seed values, mean and sample SD")
+    ax.grid(alpha=.2)
+    fig.tight_layout()
+    fig.savefig(path, dpi=140)
+    plt.close(fig)
+    return True
+
+
 def figures(frames, rows, directory):
     directory = Path(directory); directory.mkdir(exist_ok=True)
     fig, ax = plt.subplots(figsize=(8, 7)); last = frames[-1]

@@ -40,6 +40,7 @@ fn insufficient_local_vision_can_cause_a_controlled_flight_collision() {
     let config = Config {
         neighbor_radius: 0.01,
         separation_radius: 0.005,
+        body_radius: 0.025,
         ..Config::default()
     };
     let mut world = Simulation::new(
@@ -86,6 +87,7 @@ fn an_exact_reverse_turn_remains_finite() {
 #[test]
 fn each_boids_rule_has_its_expected_effect() {
     let base = Config {
+        body_radius: 0.025,
         dt: 0.01,
         turn_response: 1.0,
         ..inertial_config()
@@ -131,6 +133,46 @@ fn each_boids_rule_has_its_expected_effect() {
     cohesion.step().unwrap();
     assert!(cohesion.agents()[0].velocity()[0] > 0.0);
     assert!(cohesion.agents()[1].velocity()[0] < 0.0);
+}
+
+#[test]
+fn default_body_size_spawns_safely_and_contacts_at_two_radii() {
+    let config = Config::default();
+    close(config.body_radius, 0.1);
+    let seeded = Simulation::seeded(config, 10, 3.0, 42).unwrap();
+    for (i, a) in seeded.agents().iter().enumerate() {
+        for b in &seeded.agents()[i + 1..] {
+            let [x, y] = a.position();
+            let [u, v] = b.position();
+            assert!((x - u).hypot(y - v) > 2.0 * config.body_radius);
+        }
+    }
+    let mut world = Simulation::new(
+        Config {
+            separation_weight: 0.0,
+            alignment_weight: 0.0,
+            cohesion_weight: 0.0,
+            ..config
+        },
+        vec![
+            agent([-0.3, 0.0], [1.0, 0.0]),
+            agent([0.3, 0.0], [-1.0, 0.0]),
+        ],
+    )
+    .unwrap();
+    for _ in 0..3 {
+        world.step().unwrap();
+    }
+    assert!(
+        world
+            .agents()
+            .iter()
+            .all(|a| a.state() == AgentState::Terminated)
+    );
+    close(
+        world.agents()[1].position()[0] - world.agents()[0].position()[0],
+        0.2,
+    );
 }
 
 #[test]
@@ -560,6 +602,7 @@ fn visible_danger_triggers_a_local_sidestep() {
             Config {
                 neighbor_radius: view,
                 separation_radius: 0.1,
+                body_radius: 0.025,
                 ..Config::default()
             },
             vec![

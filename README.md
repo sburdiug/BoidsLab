@@ -1,6 +1,6 @@
 # Swarm simulator
 
-A 2D, fixed-step multi-agent simulation with a local Boids model, an interactive playground, and a headless CLI. It is a research prototype, not a calibrated UAV simulator. The current model and JSON schema are `boids-2d-v12`.
+A 2D, fixed-step multi-agent simulation with a local Boids model, an interactive playground, and a headless CLI. It is a research prototype, not a calibrated UAV simulator. The current model is `boids-2d-v13`, JSON schema 2.
 
 ## Run
 
@@ -22,6 +22,8 @@ Per directed pair of groups, **React** applies social behavior and avoidance, **
 
 Distances and positions are in **metres**, time and `dt` in **seconds**, velocity and wind in **metres per second**. The grid shows metres per cell. A single unobstructed agent at 2 m/s travels 2 m in one simulated second. A speed of 1 m/s is 3.6 km/h. The numbers are illustrative and can be replaced with research parameters; units do not calibrate the model to a physical aircraft.
 
+The default physical body radius is **0.10 m** (diameter **0.20 m**). The white body circle uses this world-space radius; the direction glyph is a screen marker. Explicit smaller or larger radii remain valid. Existing saved experiment outputs are not converted.
+
 In Free Boids, each agent considers neighbors inside its omnidirectional view radius. Separation, alignment and cohesion produce direction vectors, which are normalized and added with independently configurable weights. A direction command adds a weighted direction. The resulting heading is blended with the previous heading using `turn_response` per simulation step and normalized to the configured airspeed. With no requested direction, it retains its heading. This is an agent-based model, not a force/mass model. The turn coefficient is per step, so changing `dt` without adjusting it changes turning behavior.
 
 Obstacles are visible when the nearest rectangle surface enters the view radius. A visible rectangle crossing the intended path supplies a detour direction. Obstacle weight 0 disables planning; between 0 and 1 it blends the detour, and values above 1 have the same effect as 1. Collision geometry is independent of that weight. A nearby obstacle off the path does not hide a wall ahead. This detour is an extension to the baseline rules and does not guarantee collision-free motion.
@@ -40,7 +42,7 @@ cargo run --release --bin simulation -- --steps 400 --rectangle 4 0 2 3 --obstac
 
 Run one environment with different groups, for example `cargo run --release --bin simulation -- --scene scene.swarm --group 0 0 10 2 42 boids --speed 2 --steps 200`. Explicit CLI rectangles and fields are added to the loaded environment.
 
-Stdout contains a JSON summary. `--trace` exclusively creates JSONL with the initial frame and every completed step; existing files are not overwritten. v12 includes `units`, `groups`, `paths`, `agents`, `scene.rectangles` and step-indexed `events`. `scene.rectangle` mirrors the first rectangle for older readers; `groups` is authoritative for group parameters. State-event timestamps have step precision, though swept contacts resolve positions inside the step. JSONL is an analysis trace, not a replay player. JSON schema and model version differ from v11.
+Stdout contains a JSON summary with full event history. `--trace` exclusively creates JSONL with the initial and final frames and every `--trace-every N` steps (default 1); existing files are not overwritten. Frames carry incremental events, including contacts between saved snapshots. Use agent/group `uid` for identity; storage indices can change. Group parameters live in `groups`; `legacy` is only the former single-group view. See [export contract](docs/playground.md#export-format-v13) and the [Python analyzer](analysis/README.md). Traces are analysis data, not a replay player.
 
 ## Verification and limits
 

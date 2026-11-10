@@ -1,6 +1,24 @@
 use std::process::Command;
 
 #[test]
+fn default_radius_and_explicit_historical_radius_are_preserved() {
+    for (args, expected) in [
+        (vec!["--steps", "0"], "\"body_radius\":0.1"),
+        (
+            vec!["--steps", "0", "--body-radius", "0.025"],
+            "\"body_radius\":0.025",
+        ),
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_simulation"))
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains(expected));
+    }
+}
+
+#[test]
 fn trace_interval_keeps_initial_final_and_intermediate_events() {
     let path = std::env::temp_dir().join(format!(
         "swarm-interval-{}-{}.jsonl",
