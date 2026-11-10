@@ -125,6 +125,23 @@ class ReliabilityTests(unittest.TestCase):
         (folder/'trace.jsonl').write_text('{broken}\n')
         with self.assertRaises(ValueError): list(iter_run(folder))
 
+    def test_old_and_new_models_load_but_cannot_be_mixed_in_one_trace(self):
+        folder = self.fixture()
+        path = folder/'trace.jsonl'
+        frames = [json.loads(line) for line in path.read_text().splitlines()]
+        summary_path = folder/'stdout.json'
+        summary = json.loads(summary_path.read_text())
+        self.assertEqual(summary['model'], 'boids-2d-v14')
+        self.assertEqual(len(list(iter_run(folder))), len(frames))
+        for frame in frames: frame['model'] = 'boids-2d-v13'
+        summary['model'] = 'boids-2d-v13'
+        path.write_text('\n'.join(json.dumps(frame) for frame in frames) + '\n')
+        write_json(summary_path, summary)
+        self.assertEqual(len(list(iter_run(folder))), len(frames))
+        frames[1]['model'] = 'boids-2d-v14'
+        path.write_text('\n'.join(json.dumps(frame) for frame in frames) + '\n')
+        with self.assertRaises(ValueError): list(iter_run(folder))
+
     def test_pair_metric_reasons_and_all_dead(self):
         folder = self.fixture()
         frame = next(iter_run(folder))
@@ -207,7 +224,7 @@ class ReliabilityTests(unittest.TestCase):
         with patch('swarm_analysis.analyzer.figures'): analyze(first, component_radius=1.0)
         second = self.path/'another'
         second.mkdir()
-        for filename in ('metadata.json', 'summary.json', 'validation.json'):
+        for filename in ('metadata.json', 'summary.json', 'validation.json', 'stdout.json'):
             (second/filename).write_bytes((first/filename).read_bytes())
         meta = json.loads((second/'metadata.json').read_text())
         meta['analysis_settings']['component_radius_m'] = 2.0
@@ -219,6 +236,24 @@ class ReliabilityTests(unittest.TestCase):
         groups = json.loads((self.path/'aggregate.json').read_text())
         self.assertEqual({row['component_radius_m'] for row in groups}, {1.0, 2.0})
         self.assertTrue(all(row['planned'] == 1 for row in groups))
+
+    def test_report_rejects_mixed_model_versions(self):
+        first = self.fixture()
+        with patch('swarm_analysis.analyzer.figures'): analyze(first)
+        second = self.path/'another'
+        second.mkdir()
+        for filename in ('metadata.json', 'summary.json', 'validation.json', 'stdout.json'):
+            (second/filename).write_bytes((first/filename).read_bytes())
+        summary = json.loads((second/'summary.json').read_text())
+        summary.pop('model')
+        write_json(second/'summary.json', summary)
+        meta = json.loads((second/'metadata.json').read_text())
+        meta.pop('model')
+        write_json(second/'metadata.json', meta)
+        stdout = json.loads((second/'stdout.json').read_text())
+        stdout['model'] = 'boids-2d-v13'
+        write_json(second/'stdout.json', stdout)
+        with self.assertRaisesRegex(ValueError, 'different models'): report(self.path)
 
     def test_bounded_plot_buffer(self):
         folder = self.fixture(steps=2100, args=['--agents','1'])

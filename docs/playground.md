@@ -1,6 +1,6 @@
 # Playground controls and model
 
-`boids-2d-v13` uses one unbounded 2D scene with independent groups, multiple static rectangular obstacles, wind/noise fields and saved polyline corridors. It uses metres, seconds and metres per second. Units are an interpretation of this model, not a calibration to a particular vehicle. The former copter controller is preserved in the `codex/copter-experiment` branch.
+`boids-2d-v14` uses one unbounded 2D scene with independent groups, multiple static rectangular obstacles, wind/noise fields and saved polyline corridors. It uses metres, seconds and metres per second. Units are an interpretation of this model, not a calibration to a particular vehicle. The former copter controller is preserved in the `codex/copter-experiment` branch.
 
 ## Groups and commands
 
@@ -63,7 +63,7 @@ cargo run --release --bin simulation -- --steps 400 --rectangle 4 0 2 3 --obstac
 
 `--group X Y COUNT RADIUS SEED boids` starts a group. Profile/command/route options after it configure that group up to the next group; profile values carry forward, commands reset. All groups share `dt`. Without explicit groups, the original `--agents` invocation remains available; `--empty` starts without agents. Run `--help` for the complete option list.
 
-Stdout is a single v13 JSON object. `--trace` creates a new file only, containing an initial snapshot and one per completed step. It never overwrites a file. `units` names SI units; `groups` contains IDs, seed recipes, profiles, commands, colors and interaction overrides; `paths` contains saved geometry; `agents` includes `group_id`, true/measured position, ground/air/wind velocities, state and waypoint index; `scene.rectangles` contains all obstacles and `scene.rectangle` mirrors the first for compatibility. `events` contains sequence, step and time for scene, group, profile, interaction, command and state changes. An event appears once across JSONL frames; stdout summary contains the full history. State events are reported at step precision. Long recordings use memory/disk and an I/O failure may leave an incomplete line.
+Stdout is a single v14 JSON object. `--trace` creates a new file only, containing an initial snapshot, every Nth completed step (configured by `--trace-every`) and the final snapshot. It never overwrites a file. `units` names SI units; `groups` contains IDs, seed recipes, profiles, commands, colors and interaction overrides; `paths` contains saved geometry; `agents` includes `group_id`, true/measured position, ground/air/wind velocities, state and waypoint index; `scene.rectangles` contains all obstacles and `scene.rectangle` mirrors the first for compatibility. `events` contains sequence, step and time for scene, group, profile, interaction, command and state changes. An event appears once across JSONL frames; stdout summary contains the full history. State events are reported at step precision. Long recordings use memory/disk and an I/O failure may leave an incomplete line.
 
 ```python
 import json
@@ -76,5 +76,7 @@ with open("run-001.jsonl", encoding="utf-8") as source:
 [Ukrainian version](playground.uk.md).
 
 ## Export format v13
+
+v14 changes controlled parking behavior but retains this schema 2 export contract; compare the model field before combining results.
 
 JSON uses `schema_version: 2`. Agent and group `uid` values remain stable across removal within a run; Restart starts a new run. `id` and `group_id` remain current indices. Events carry `agent_uids` and `group_uids`; `agent_contact` and `obstacle_contact` contain the substep contact time. Simultaneous contacts can produce multiple events. Use per-group settings from `groups`; legacy global fields are under `legacy`. `event_scope` distinguishes the full summary history from incremental JSONL events. `--trace-every N` writes the initial and final snapshot and every Nth step while retaining intermediate events. `task_observation` gives distance to the final target and membership in the preferred area; `arrived` alone does not guarantee success.

@@ -300,7 +300,7 @@ fn single_agent_commands_report_arrival() {
         let summary = String::from_utf8(output.stdout).unwrap();
         assert!(summary.contains("\"arrived\":1"));
         assert!(summary.contains("\"terminated\":0"));
-        assert!(summary.contains("\"model\":\"boids-2d-v13\""));
+        assert!(summary.contains("\"model\":\"boids-2d-v14\""));
     }
 }
 

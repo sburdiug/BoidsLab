@@ -1,6 +1,6 @@
 # Fix status and remaining limits
 
-Updated 2026-11-10 after implementing the recommendations from this document. Model: `boids-2d-v13`, export schema 2, analysis contract version 2. The [research roadmap](research-roadmap-2d-3d.md) remains a separate plan; 3D and new research scenarios were not implemented in this fix pass.
+Snapshot of the first fix pass: 2026-11-10, model `boids-2d-v13`, export schema 2, analysis contract version 2. The subsequent dense-gather correction uses model `boids-2d-v14`; see the follow-up below. The [research roadmap](research-roadmap-2d-3d.md) remains a separate plan; 3D and new research scenarios were not implemented in this fix pass.
 
 ## Completed fixes
 
@@ -24,9 +24,9 @@ The on-screen white body circle already uses `body_radius * camera_zoom`, so the
 - Those runs show zero termination in the controlled Gather/obstacle/route cases but no 90% arrival attainment by their configured horizon. Free-flocking cases show substantial termination. These are exploratory observations, not a calibrated safety assessment, an optimal setting or a regression diagnosis. Larger bodies changed the experiment; defaults were not tuned to hide collisions.
 - Local streaming diagnostics are recorded in `work/analysis/streaming-check/measurements.json` and summarized in the [analyzer README](../analysis/README.md). A 3x longer 20-agent trace used approximately 1.5x the Python-traced peak, with growth explained by retained plot frames. Dense and sparse 200-agent stationary cases were checked separately. Plotting was mocked; allocation tracing adds runtime overhead. These are not engine/FPS or full-process-memory benchmarks.
 
-## Follow-up: dense gather remains open
+## Follow-up: dense gather
 
-A longer-horizon diagnostic found persistent local motion near the target in the 20-agent controlled runs. The tested early-stop heuristic made the case worse and was discarded; see the reproducible [investigation](arrival-investigation.md). Analysis version 3 adds connectivity, shape, corridor occupancy and 50/90/100% arrival thresholds.
+A longer-horizon diagnostic found persistent local motion near the target in the 20-agent controlled runs. The first early-stop heuristic was discarded. Model v14 now rechecks obstructed parking paths and can request a safe local hold when no clear candidate is selected; all nine original controlled cases completed without contact in the 100 s regression. This is not a general guarantee. See the [investigation](arrival-investigation.md). Analysis version 3 adds connectivity, shape, corridor occupancy and 50/90/100% arrival thresholds.
 
 ## Remaining limits
 

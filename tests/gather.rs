@@ -1,4 +1,66 @@
-use rust_playground::simulation::{Agent, AgentState, Command, Config, Simulation};
+use rust_playground::simulation::{
+    Agent, AgentState, Command, Config, Rectangle, Route, Simulation, SpawnConfig,
+};
+
+#[test]
+fn blocked_parking_targets_do_not_trap_agents_in_repeated_motion() {
+    for scenario in 0..3 {
+        for seed in [7, 42, 99] {
+            let config = Config::default();
+            let mut world = Simulation::empty(config).unwrap();
+            if scenario == 1 {
+                world
+                    .add_obstacle(Rectangle::new([0.0, 0.0], 1.0, 3.0).unwrap())
+                    .unwrap();
+            }
+            world
+                .add_group(
+                    config,
+                    SpawnConfig {
+                        count: 20,
+                        center: [-4.0, 0.0],
+                        radius: 1.0,
+                        seed,
+                    },
+                    Command::Flock,
+                )
+                .unwrap();
+            if scenario == 2 {
+                world
+                    .set_route(Route::new(vec![[-4.0, 0.0], [0.0, 0.0], [3.0, 3.0]], 1.0).unwrap())
+                    .unwrap();
+            } else {
+                world
+                    .set_command(Command::Gather {
+                        center: [4.0, 0.0],
+                        radius: 1.0,
+                    })
+                    .unwrap();
+            }
+            for _ in 0..1000 {
+                world.step().unwrap();
+            }
+            assert!(
+                world
+                    .agents()
+                    .iter()
+                    .all(|a| a.state() == AgentState::Arrived && a.velocity() == [0.0; 2]),
+                "scenario={scenario}, seed={seed}: {:?}",
+                world.agents()
+            );
+            for (i, a) in world.agents().iter().enumerate() {
+                for b in &world.agents()[i + 1..] {
+                    let d = (a.position()[0] - b.position()[0])
+                        .hypot(a.position()[1] - b.position()[1]);
+                    assert!(
+                        d > 2.0 * config.body_radius,
+                        "scenario={scenario}, seed={seed}, distance={d}"
+                    );
+                }
+            }
+        }
+    }
+}
 
 fn parked(config: Config, positions: &[[f64; 2]]) -> Simulation {
     let agents = positions

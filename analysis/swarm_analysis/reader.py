@@ -59,7 +59,7 @@ def iter_run(directory, expected_steps=None, trace_every=None):
                 if not line.endswith("\n"): raise InvalidOutput("incomplete line")
                 frame = strict_json(line)
                 if not natural(frame["steps"]): raise InvalidOutput("invalid step")
-                if frame["model"] != "boids-2d-v13" or frame["schema_version"] != 2 or frame["units"] != {"length":"m", "time":"s", "speed":"m/s"}:
+                if frame["model"] not in ("boids-2d-v13", "boids-2d-v14") or frame["schema_version"] != 2 or frame["units"] != {"length":"m", "time":"s", "speed":"m/s"}:
                     raise InvalidOutput("unsupported model/units")
                 if expected is None or frame["steps"] != expected or frame["event_scope"] != "incremental":
                     raise InvalidOutput("unexpected frame sequence")
@@ -71,7 +71,7 @@ def iter_run(directory, expected_steps=None, trace_every=None):
                 agent_uids = {a["uid"] for a in agents}
                 if any(not natural(uid) for uid in [*groups, *agent_uids]): raise InvalidOutput("invalid UID")
                 if len(groups) != len(frame["groups"]) or len(agent_uids) != len(agents): raise InvalidOutput("duplicate UID")
-                current = (frame["groups"], frame["scene"], frame["paths"], [(a["uid"],a["group_uid"]) for a in agents])
+                current = (frame["model"], frame["groups"], frame["scene"], frame["paths"], [(a["uid"],a["group_uid"]) for a in agents])
                 if signature is not None and current != signature: raise InvalidOutput("dynamic scenes/groups unsupported")
                 signature = current
                 dt = frame["legacy"]["config"]["dt"]

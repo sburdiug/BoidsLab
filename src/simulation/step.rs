@@ -108,10 +108,11 @@ impl Simulation {
                                         > 1.1
                                             * (config.body_radius
                                                 + self.agent_config(j).body_radius)
-                                }) && self
-                                    .obstacles
-                                    .iter()
-                                    .all(|o| o.distance(*target) > config.body_radius)
+                                }) && !self.parking_path_blocked(i, *target, &neighbors, &observed)
+                                    && self
+                                        .obstacles
+                                        .iter()
+                                        .all(|o| o.distance(*target) > config.body_radius)
                             });
                             let target = match cached {
                                 Some(target) => target,

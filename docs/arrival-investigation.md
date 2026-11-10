@@ -1,6 +1,10 @@
 # Dense gather investigation
 
-Status: open. This note records a reproducible model limitation, not a corrected controller. It compares behavior and analysis using the `boids-2d-v13` model, schema 2, with 0.10 m body radius. The Rust movement rules were not changed during this investigation.
+Status: the reproduced blocked-parking behavior was corrected in `boids-2d-v14` (schema 2). The measurements below record the prior `boids-2d-v13` behavior with a 0.10 m body radius; they remain historical and should not be relabeled.
+
+In v14, a cached destination is re-evaluated when a visible parked agent blocks the path. A neighbor behind the direction of travel does not block moving away. If the available candidates remain blocked and an agent is already near the gathering region, it may choose its current position when physical clearance is available. This is a fallback to a safe local hold request, not a direct change to `Arrived`: the existing settling duration and physical contact logic still decide the outcome. The desired separation distance is not a hard constraint; the fallback can hold with a smaller gap. The rules are unchanged for Free Boids.
+
+The nine cases in the table were repeated with the same seeds and parameters for 100 s: all 20 agents reached `Arrived` and none terminated in each run. A Rust regression also checks zero final velocities and nonoverlapping bodies. This verifies these specific cases, not all group sizes, densities, noise, wind, geometries or parameter settings. Earlier v13 data remain unchanged. No weights were tuned to select a preferred swarm shape.
 
 ## Observation
 
@@ -18,7 +22,7 @@ The existing `local_goal` tries to select a locally free parking position, while
 
 ## Reproduce
 
-From the repository root, build the current executable and run the open-space control:
+From the repository root, build the current executable and run the open-space control. The current build produces v14 results; use the earlier v13 revision to reproduce the historical counts:
 
 ```powershell
 cargo build --release --locked --bin simulation
@@ -29,10 +33,10 @@ For a trace, add `--trace work/analysis/gather-trace.jsonl --trace-every 10`, us
 
 Free Boids is a different case: its three social rules and heading response are not a predictive collision-avoidance guarantee. Collisions are expected to remain possible and should not be hidden by declaring them an implementation error. Investigate avoidance extensions as an explicit model/scenario choice, separately from classical Boids.
 
-## Next correction to investigate
+## Verification and remaining limits
 
-Build a small deterministic reproduction with a few agents and inspect local targets, nearest-neighbor clearance, velocity and progress per tick. Evaluate a candidate on matched seeds, open space, obstacles and routes, including already-safe single-agent and sparse-group behavior, physical contacts and near-boundary cases. A genuine fix should reduce persistent oscillation without forcing arrivals, violating separation or changing Free Boids. If movement rules change, increment the model version and document compatibility with previous results.
+The correction was checked against the original matched-seed cases, existing single-agent and obstacle tests, and the full Rust test suite. A focused test checks that a parked neighbor blocks motion toward it but does not block motion away. The engine still requires physical clearance and a settling interval; it does not guarantee preferred separation or collision-free behavior under arbitrary circumstances. Broader parameter and population comparisons remain separate experiments.
 
 ## Українська вижимка
 
-Проблема залишається відкритою. Для груп із 20 агентів через 100 с у дев'яти керованих запусках 3–5 агентів і далі рухаються; загиблих немає. У прикладі Gather вони вже близько до центру, але роблять локальні рухи з малим підсумковим переміщенням. Проста спроба дозволити раніше зупинятися погіршила результат, тому її відхилено. Потрібен окремий малий відтворюваний тест і перевірка запропонованого виправлення без штучного встановлення стану прибуття. Столкнення у класичному Free Boids можливі за визначенням поточної моделі; це окреме питання від стабілізації.
+Для перевіреного випадку виправлено зациклення біля заблокованої точки. Модель v14 перевіряє шлях до збереженої локальної цілі та може обрати поточну позицію, якщо шлях перекритий і є фізичний зазор. Стан прибуття, як і раніше, визначається після стабілізації та перевірки контактів. У дев'яти контрольних запусках по 20 агентів усі зупинилися без загиблих; це не гарантія для інших параметрів. Бажана дистанція розділення є м'якою умовою. Класичні Free Boids не змінено, старі результати v13 збережено.

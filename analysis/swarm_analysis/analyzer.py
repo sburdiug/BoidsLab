@@ -68,7 +68,7 @@ def analyze(path, expected_steps=None, component_radius=None):
                 for row in rows:
                     row.update(run_hash=meta.get("run_hash", "unknown"), case=meta.get("case", "standalone"),
                                parameters=json.dumps(meta.get("params", {}), sort_keys=True),
-                               analysis_version=ANALYSIS_VERSION, length_unit="m", time_unit="s", speed_unit="m/s")
+                               model=frame["model"], analysis_version=ANALYSIS_VERSION, length_unit="m", time_unit="s", speed_unit="m/s")
                     for metric, reason in json.loads(row["undefined_reasons"]).items():
                         if reason == "pair_limit":
                             warnings.add(f"{metric} skipped when living population squared exceeds 2000000 (pair_limit).")
@@ -104,7 +104,8 @@ def analyze(path, expected_steps=None, component_radius=None):
                 group[f"time_to_{percent}_arrived"] = None if step is None else step * dt
                 group[f"time_to_{percent}_reason"] = reason
                 group[f"time_to_{percent}_interval"] = interval_value
-        result = {"analysis_version": ANALYSIS_VERSION, "analysis_settings": meta["analysis_settings"], "groups": groups,
+        meta["model"] = summary["model"]
+        result = {"model": summary["model"], "analysis_version": ANALYSIS_VERSION, "analysis_settings": meta["analysis_settings"], "groups": groups,
                   "agent_contacts": sum(e["type"] == "agent_contact" for e in summary["events"]),
                   "obstacle_contacts": sum(e["type"] == "obstacle_contact" for e in summary["events"]),
                   "first_contact_time": min((e["time"] for e in summary["events"] if e["type"] in ("agent_contact", "obstacle_contact")), default=None)}

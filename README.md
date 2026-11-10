@@ -1,6 +1,6 @@
 # Swarm simulator
 
-A 2D, fixed-step multi-agent simulation with a local Boids model, an interactive playground, and a headless CLI. It is a research prototype, not a calibrated UAV simulator. The current model is `boids-2d-v13`, JSON schema 2.
+A 2D, fixed-step multi-agent simulation with a local Boids model, an interactive playground, and a headless CLI. It is a research prototype, not a calibrated UAV simulator. The current model is `boids-2d-v14`, JSON schema 2.
 
 ## Run
 
@@ -29,6 +29,8 @@ In Free Boids, each agent considers neighbors inside its omnidirectional view ra
 Obstacles are visible when the nearest rectangle surface enters the view radius. A visible rectangle crossing the intended path supplies a detour direction. Obstacle weight 0 disables planning; between 0 and 1 it blends the detour, and values above 1 have the same effect as 1. Collision geometry is independent of that weight. A nearby obstacle off the path does not hide a wall ahead. This detour is an extension to the baseline rules and does not guarantee collision-free motion.
 
 Gather, Spread and Route extend the same agent model with temporary local targets. They can slow or stop agents. The target circle is a soft density guide, not a rigid boundary or mandatory circular formation. For these controlled commands, a local candidate check and a bounded three-pass reconciliation examine visible neighbors and walls before committing the step. They respect directed interaction policies, but add behavior beyond classical Free Boids; they are not a complete path planner or a safety guarantee. Obstacles, noise, density, high speed and limited perception can still cause collisions or jams. There are no acceleration, braking, jerk, rotor or yaw dynamics in this branch; the previous model is preserved in `codex/copter-experiment`.
+
+In v14, a cached gathering target is reconsidered if already-settled visible neighbors obstruct the way. If no clear candidate is selected near the gathering area, an agent with physical clearance can try to hold position; the normal settling and contact checks still apply. Desired spacing is a soft preference, so this fallback can stop closer than the separation radius. See the [investigation](docs/arrival-investigation.md) for the reproduced case and limits.
 
 Wind is a kinematic ground-velocity offset, not an aerodynamic force. Overlapping winds add; stronger wind can overcome a stationary agent. Noise is Gaussian position error, used by local perception. Physical contacts use true positions and swept disk/rectangle geometry through the whole step. Terminated agents remain markers and no longer obstruct others.
 

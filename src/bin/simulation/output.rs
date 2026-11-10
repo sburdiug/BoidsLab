@@ -157,7 +157,7 @@ pub(super) fn write_snapshot(
     let states = |s| world.agents().iter().filter(|a| a.state() == s).count();
     write!(
         out,
-        "{{\"model\":\"boids-2d-v13\",\"schema_version\":2,\"event_scope\":\"{}\",\"units\":{{\"length\":\"m\",\"time\":\"s\",\"speed\":\"m/s\"}},\"completion_reason\":\"{reason}\",\"steps\":{},\"time\":{},\"initial_agents\":{count},\"moving\":{},\"arrived\":{},\"terminated\":{},\"legacy\":{{\"seed\":{seed},\"spawn_radius\":{spawn_radius},\"config\":",
+        "{{\"model\":\"boids-2d-v14\",\"schema_version\":2,\"event_scope\":\"{}\",\"units\":{{\"length\":\"m\",\"time\":\"s\",\"speed\":\"m/s\"}},\"completion_reason\":\"{reason}\",\"steps\":{},\"time\":{},\"initial_agents\":{count},\"moving\":{},\"arrived\":{},\"terminated\":{},\"legacy\":{{\"seed\":{seed},\"spawn_radius\":{spawn_radius},\"config\":",
         if full_history {
             "full_history"
         } else {

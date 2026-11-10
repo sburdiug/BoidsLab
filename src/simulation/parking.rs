@@ -2,6 +2,33 @@ use super::{Agent, AgentState, Command, Simulation, SimulationError, math::*};
 use std::f64::consts::{PI, TAU};
 
 impl Simulation {
+    pub(super) fn parking_path_blocked(
+        &self,
+        index: usize,
+        point: [f64; 2],
+        visible: &[usize],
+        observed: &[Agent],
+    ) -> bool {
+        let agent = observed[index];
+        let config = self.agent_config(index);
+        let path = sub(point, agent.position);
+        let direction = unit(path).unwrap_or([0.0; 2]);
+        visible.iter().any(|&j| {
+            let other = observed[j];
+            if other.state != AgentState::Arrived {
+                return false;
+            }
+            let offset = sub(other.position, agent.position);
+            if dot(offset, path) <= 0.0 {
+                return false;
+            }
+            let along = dot(offset, direction).clamp(0.0, norm(path));
+            norm(sub(offset, scale(direction, along)))
+                < (1.4 * (config.body_radius + self.agent_config(j).body_radius))
+                    .max(0.75 * config.separation_radius)
+        })
+    }
+
     pub(super) fn local_goal(
         &self,
         index: usize,
@@ -67,24 +94,7 @@ impl Simulation {
                     .iter()
                     .all(|a| norm(sub(point, a.position)) >= pair_spacing(a) * (1.0 - 1e-8))
         };
-        let parked: Vec<_> = neighbors
-            .iter()
-            .filter(|a| a.state == AgentState::Arrived)
-            .collect();
-        let blocked = |point: [f64; 2]| {
-            if parked.is_empty() {
-                return false;
-            }
-            let path = sub(point, agent.position);
-            let direction = unit(path).unwrap_or([0.0; 2]);
-            parked.iter().any(|a| {
-                let offset = sub(a.position, agent.position);
-                let along = dot(offset, direction).clamp(0.0, norm(path));
-                norm(sub(offset, scale(direction, along)))
-                    < (1.4 * (config.body_radius + self.groups[a.group_id].config.body_radius))
-                        .max(0.75 * config.separation_radius)
-            })
-        };
+        let blocked = |point| self.parking_path_blocked(index, point, visible, observed);
         // Do not cross a parked swarm to reach the preferred point.
         if free(base) && !blocked(base) {
             return Ok(base);
@@ -136,9 +146,46 @@ impl Simulation {
                 }
             }
         }
+        if blocked(goal)
+            && super::collision::near_region(index, observed, center, radius, config)
+            && visible.iter().all(|&j| {
+                norm(sub(agent.position, observed[j].position))
+                    > 1.1 * (config.body_radius + self.agent_config(j).body_radius)
+            })
+            && self
+                .obstacles
+                .iter()
+                .all(|wall| wall.distance(agent.position) > config.body_radius)
+        {
+            // A blocked destination is not a reason to keep flying through a parked neighbor.
+            goal = agent.position;
+        }
         if !finite(goal) {
             return Err(SimulationError::NumericOverflow);
         }
         Ok(goal)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::simulation::Config;
+
+    #[test]
+    fn a_parked_neighbor_blocks_only_paths_toward_it() {
+        let mut world = Simulation::new(
+            Config::default(),
+            vec![
+                Agent::new([0.0, 0.0], [1.0, 0.0]).unwrap(),
+                Agent::new([0.25, 0.0], [1.0, 0.0]).unwrap(),
+            ],
+        )
+        .unwrap();
+        world.set_command(Command::Hold).unwrap();
+        let agents = world.agents();
+        assert!(world.parking_path_blocked(0, [1.0, 0.0], &[1], agents));
+        assert!(!world.parking_path_blocked(0, [-1.0, 0.0], &[1], agents));
+        assert!(!world.parking_path_blocked(0, [0.0, 0.0], &[1], agents));
     }
 }

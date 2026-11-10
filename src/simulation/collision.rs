@@ -196,7 +196,7 @@ fn resolve_pairs(
     Ok(contacts)
 }
 
-fn near_region(
+pub(super) fn near_region(
     index: usize,
     agents: &[Agent],
     center: [f64; 2],

@@ -23,10 +23,15 @@ def report(path):
     aggregate = []
     for (case, params, link_radius), items in combinations.items():
         values = []
+        models = set()
         for item in items:
             if not item["valid"]:
                 continue
             result = json.loads((path / item["directory"] / "summary.json").read_text())
+            model = result.get("model") or item.get("model")
+            if not model:
+                model = json.loads((path / item["directory"] / "stdout.json").read_text(encoding="utf-8"))["model"]
+            models.add(model)
             for uid, group in result["groups"].items():
                 values.append({"seed": item["params"].get("seed"), "group_uid": uid,
                     "polarization": group["final"]["polarization"], "terminated": group["final"]["terminated"],
@@ -39,11 +44,13 @@ def report(path):
                     "time_to_50_arrived": group.get("time_to_50_arrived"), "time_to_100_arrived": group.get("time_to_100_arrived"),
                     "world_first_contact_time": result.get("first_contact_time"),
                     "world_agent_contacts": result["agent_contacts"], "world_obstacle_contacts": result["obstacle_contacts"]})
+        if len(models) > 1:
+            raise ValueError(f"Cannot aggregate different models for {case}: {sorted(models)}")
         for uid in sorted({v["group_uid"] for v in values}) or [None]:
             samples = [v for v in values if v["group_uid"] == uid]
             applicable = [v for v in samples if v["time_to_90_reason"] != "not_applicable"]
             completed = sum(v["time_to_90_arrived"] is not None for v in applicable)
-            item = {"case": case, "group_uid": uid, "parameters": json.loads(params), "component_radius_m": link_radius, "planned": len(items),
+            item = {"case": case, "group_uid": uid, "model": next(iter(models), None), "parameters": json.loads(params), "component_radius_m": link_radius, "planned": len(items),
                 "valid": sum(i["valid"] for i in items), "failed": sum(not i["valid"] for i in items),
                 "applicable_valid": len(applicable), "completed": completed,
                 "conditional_completion_rate": completed / len(applicable) if applicable else None,
