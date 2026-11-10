@@ -4,20 +4,20 @@ from itertools import groupby
 import numpy as np
 
 
-def arrival_thresholds(initial, events):
-    """First completed tick with >=90% arrived, including ticks between snapshots."""
+def arrival_thresholds(initial, events, fraction=.9):
+    """First completed tick reaching the fraction, including between snapshots."""
     agents = {a["uid"]: a for a in initial["agents"]}
     sizes = Counter(a["group_uid"] for a in agents.values())
     counts = Counter(a["group_uid"] for a in agents.values() if a["state"] == "arrived")
     applicable = {g["uid"] for g in initial["groups"] if g["command"]["type"] in ("gather", "route")}
-    result = {uid: 0 for uid in applicable if sizes[uid] and counts[uid] / sizes[uid] >= .9}
+    result = {uid: 0 for uid in applicable if sizes[uid] and counts[uid] / sizes[uid] >= fraction}
     for step, batch in groupby(events, key=lambda e: e["step"]):
         for event in batch:
             if step and event["type"] == "state_changed":
                 uid = agents[event["agent_uids"][0]]["group_uid"]
                 counts[uid] += int(event["to"] == "arrived") - int(event["from"] == "arrived")
         for uid in applicable - result.keys():
-            if sizes[uid] and counts[uid] / sizes[uid] >= .9:
+            if sizes[uid] and counts[uid] / sizes[uid] >= fraction:
                 result[uid] = step
     return result
 
@@ -35,7 +35,7 @@ def route_distances(points, route):
     return best
 
 
-def frame_metrics(frame, pair_limit=2_000_000):
+def frame_metrics(frame, pair_limit=2_000_000, link_distance=1.0):
     groups = {g["uid"]: g for g in frame["groups"]}
     live = [a for a in frame["agents"] if a["state"] != "terminated"]
     global_gap = None
@@ -52,7 +52,9 @@ def frame_metrics(frame, pair_limit=2_000_000):
                **{s: sum(a["state"] == s for a in agents) / n if n else None for s in ("moving", "arrived", "terminated")},
                "centroid_x": None, "centroid_y": None, "spread": None, "polarization": None,
                "moving_vectors": 0, "mean_speed": None, "nearest_neighbor": None, "min_body_gap": global_gap,
-               "target_distance": None, "inside_fraction": None, "route_error_median": None, "route_error_max": None, "corridor_excess_max": None}
+               "target_distance": None, "inside_fraction": None, "route_error_median": None, "route_error_max": None, "corridor_excess_max": None,
+               "component_count": None, "largest_component_fraction": None, "elongation": None, "route_inside_fraction": None,
+               "component_link_distance_m": link_distance}
         if alive:
             p = np.array([a["position"] for a in alive]); v = np.array([a["velocity"] for a in alive])
             center = p.mean(axis=0); speed = np.linalg.norm(v, axis=1); moving = speed > 1e-9
@@ -61,20 +63,39 @@ def frame_metrics(frame, pair_limit=2_000_000):
             if len(p) > 1 and len(p)**2 <= pair_limit:
                 d = np.linalg.norm(p[:, None] - p[None, :], axis=2); np.fill_diagonal(d, np.inf)
                 row["nearest_neighbor"] = float(np.median(d.min(axis=1)))
+                adjacency = d <= link_distance
+                unseen = set(range(len(p)))
+                sizes = []
+                while unseen:
+                    stack = [unseen.pop()]
+                    size = 0
+                    while stack:
+                        current = stack.pop(); size += 1
+                        linked = unseen.intersection(np.flatnonzero(adjacency[current]))
+                        unseen.difference_update(linked); stack.extend(linked)
+                    sizes.append(size)
+                row.update(component_count=len(sizes), largest_component_fraction=max(sizes)/len(p))
+            elif len(p) == 1:
+                row.update(component_count=1, largest_component_fraction=1.0)
+            if len(p) >= 2:
+                eigenvalues = np.linalg.eigvalsh((p-center).T @ (p-center) / len(p))
+                if eigenvalues[0] > max(0, eigenvalues[1] * 1e-12):
+                    row["elongation"] = float(np.sqrt(eigenvalues[1] / eigenvalues[0]))
             command = group["command"]
             if command["type"] == "gather":
                 dist = np.linalg.norm(p - np.array(command["center"]), axis=1)
                 row.update(target_distance=float(dist.mean()), inside_fraction=float((dist <= command["radius"]).sum()/n))
             if command["type"] == "route":
                 dist = route_distances(p, command["points"])
-                row.update(route_error_median=float(np.median(dist)), route_error_max=float(dist.max()), corridor_excess_max=float(np.maximum(0, dist-command["radius"]).max()))
+                row.update(route_error_median=float(np.median(dist)), route_error_max=float(dist.max()), corridor_excess_max=float(np.maximum(0, dist-command["radius"]).max()), route_inside_fraction=float(np.mean(dist <= command["radius"])))
         reasons = {}
         for key, value in row.items():
             if value is not None: continue
             if key == "min_body_gap":
                 reasons[key] = "pair_limit" if len(live)**2 > pair_limit else "fewer_than_two_living_agents"
-            elif key == "nearest_neighbor":
+            elif key in ("nearest_neighbor", "component_count", "largest_component_fraction"):
                 reasons[key] = "pair_limit" if len(alive)**2 > pair_limit else "fewer_than_two_living_agents"
+            elif key == "elongation": reasons[key] = "fewer_than_two_living_agents" if len(alive) < 2 else "degenerate_transverse_spread"
             elif key in ("target_distance", "inside_fraction") and group["command"]["type"] != "gather": reasons[key] = "not_applicable"
             elif key.startswith("route_") or key == "corridor_excess_max": reasons[key] = "not_applicable" if group["command"]["type"] != "route" else "no_living_agents"
             elif key == "polarization": reasons[key] = "no_moving_living_agents"

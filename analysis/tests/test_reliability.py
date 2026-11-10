@@ -68,6 +68,16 @@ class ReliabilityTests(unittest.TestCase):
                   {'step': 3, 'type': 'state_changed', 'agent_uids': [9], 'from': 'arrived', 'to': 'moving'}]
         self.assertEqual(arrival_thresholds(initial, events), {7: 2})
 
+    def test_arrival_thresholds_keep_terminated_in_original_denominator(self):
+        initial = {'groups': [{'uid': 7, 'command': {'type': 'gather'}}],
+                   'agents': [{'uid': i, 'group_uid': 7, 'state': 'moving'} for i in range(10)]}
+        events = [{'step': 2 if i < 5 else 4, 'type': 'state_changed', 'agent_uids': [i],
+                   'from': 'moving', 'to': 'arrived'} for i in range(9)]
+        events.append({'step': 6, 'type': 'state_changed', 'agent_uids': [9], 'from': 'moving', 'to': 'terminated'})
+        self.assertEqual(arrival_thresholds(initial, events, .5), {7: 2})
+        self.assertEqual(arrival_thresholds(initial, events, .9), {7: 4})
+        self.assertEqual(arrival_thresholds(initial, events, 1), {})
+
     def test_plot_time_and_failure_do_not_change_process_time(self):
         folder = self.fixture()
         def slow_plot(*args): time.sleep(.05)
@@ -121,7 +131,7 @@ class ReliabilityTests(unittest.TestCase):
         row = frame_metrics(frame, pair_limit=1)[0]
         self.assertEqual(json.loads(row['undefined_reasons'])['min_body_gap'], 'pair_limit')
         self.assertEqual(row['min_body_gap_scope'], 'world')
-        with patch('swarm_analysis.analyzer.frame_metrics', side_effect=lambda f: frame_metrics(f, pair_limit=1)), patch('swarm_analysis.analyzer.figures'):
+        with patch('swarm_analysis.analyzer.frame_metrics', side_effect=lambda f, **kw: frame_metrics(f, pair_limit=1, **kw)), patch('swarm_analysis.analyzer.figures'):
             analyze(folder)
         self.assertTrue(json.loads((folder/'validation.json').read_text())['warnings'])
         for agent in frame['agents']: agent['state'] = 'terminated'
@@ -172,6 +182,43 @@ class ReliabilityTests(unittest.TestCase):
         data['cases'][0].update(args=['--seed','${seed}'], grid={'seed':[1,1.0]})
         write_json(path, data)
         with self.assertRaises(ValueError): list(load_manifest(path))
+
+    def test_component_radius_validation_and_persistence(self):
+        folder = self.fixture()
+        with patch('swarm_analysis.analyzer.figures'):
+            analyze(folder, component_radius=2.0)
+        self.assertEqual(json.loads((folder/'metadata.json').read_text())['analysis_settings']['component_radius_m'], 2.0)
+        self.assertEqual(json.loads((folder/'summary.json').read_text())['analysis_settings']['component_radius_m'], 2.0)
+        with self.assertRaises(ValueError): analyze(folder, component_radius=float('nan'))
+        self.assertTrue((folder/'summary.json').exists())
+        with patch('swarm_analysis.analyzer.figures'): analyze(folder)
+        self.assertEqual(json.loads((folder/'summary.json').read_text())['analysis_settings']['component_radius_m'], 2.0)
+
+    def test_standalone_trace_without_metadata_warns(self):
+        folder = self.fixture()
+        (folder/'metadata.json').unlink()
+        with patch('swarm_analysis.analyzer.figures'): analyze(folder)
+        warnings = json.loads((folder/'validation.json').read_text())['warnings']
+        self.assertTrue(any('No process metadata' in warning for warning in warnings))
+        self.assertFalse((folder/'metadata.json').exists())
+
+    def test_report_does_not_mix_connectivity_radii(self):
+        first = self.fixture()
+        with patch('swarm_analysis.analyzer.figures'): analyze(first, component_radius=1.0)
+        second = self.path/'another'
+        second.mkdir()
+        for filename in ('metadata.json', 'summary.json', 'validation.json'):
+            (second/filename).write_bytes((first/filename).read_bytes())
+        meta = json.loads((second/'metadata.json').read_text())
+        meta['analysis_settings']['component_radius_m'] = 2.0
+        write_json(second/'metadata.json', meta)
+        summary = json.loads((second/'summary.json').read_text())
+        summary['analysis_settings']['component_radius_m'] = 2.0
+        write_json(second/'summary.json', summary)
+        report(self.path)
+        groups = json.loads((self.path/'aggregate.json').read_text())
+        self.assertEqual({row['component_radius_m'] for row in groups}, {1.0, 2.0})
+        self.assertTrue(all(row['planned'] == 1 for row in groups))
 
     def test_bounded_plot_buffer(self):
         folder = self.fixture(steps=2100, args=['--agents','1'])

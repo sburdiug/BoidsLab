@@ -24,6 +24,10 @@ The on-screen white body circle already uses `body_radius * camera_zoom`, so the
 - Those runs show zero termination in the controlled Gather/obstacle/route cases but no 90% arrival attainment by their configured horizon. Free-flocking cases show substantial termination. These are exploratory observations, not a calibrated safety assessment, an optimal setting or a regression diagnosis. Larger bodies changed the experiment; defaults were not tuned to hide collisions.
 - Local streaming diagnostics are recorded in `work/analysis/streaming-check/measurements.json` and summarized in the [analyzer README](../analysis/README.md). A 3x longer 20-agent trace used approximately 1.5x the Python-traced peak, with growth explained by retained plot frames. Dense and sparse 200-agent stationary cases were checked separately. Plotting was mocked; allocation tracing adds runtime overhead. These are not engine/FPS or full-process-memory benchmarks.
 
+## Follow-up: dense gather remains open
+
+A longer-horizon diagnostic found persistent local motion near the target in the 20-agent controlled runs. The tested early-stop heuristic made the case worse and was discarded; see the reproducible [investigation](arrival-investigation.md). Analysis version 3 adds connectivity, shape, corridor occupancy and 50/90/100% arrival thresholds.
+
 ## Remaining limits
 
 1. The final Rust summary still contains the complete event history and is held as one complete document; plotting holds a bounded sample. Memory is not strictly independent of event count or population. Pair distances still use a bounded quadratic calculation. No new spatial nearest-neighbor implementation was justified by this small diagnostic run.

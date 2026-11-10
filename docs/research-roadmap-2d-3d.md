@@ -7,7 +7,7 @@ Planning snapshot: 2026-11-10. Companion: [current issues and fixes](current-iss
 Build an inspectable swarm playground and an analysis workflow that answer: **does the group accomplish its task safely while remaining a coherent swarm, and how do parameters change that behavior?** The project should be reproducible and demonstrable beyond a course assignment.
 
 - Keep 2D as a supported mode; add 3D as a separate experiment layer later.
-- Nominal agent radius is **0.10 m**, diameter **0.20 m**. Test larger bodies separately. This default change is planned, not yet applied.
+- Nominal agent radius is **0.10 m**, diameter **0.20 m**. Test larger bodies separately. This default is now applied; historical runs retain their original size.
 - Preserve independent groups and directed React/Avoid/Ignore policies. Ignore removes perception/response, not physical contacts.
 - Retain environment presets, routes, obstacles, wind and observation noise. These are controlled experimental factors, not evidence of realistic vehicle dynamics.
 - Begin with small interpretable experiments. Do not optimize an arbitrary combined score or call one configuration universally best.
@@ -47,7 +47,7 @@ Do not report battery use, physical energy or realistic actuator effort: the cur
 
 ### Minimum useful next metric set
 
-Implement safety/termination, task-time applicability, largest-component fraction, elongation and route corridor occupancy first. Add richer robustness/runtime statistics only when their scenarios are ready. This keeps the initial dashboard/report interpretable.
+The analyzer now includes safety/termination, task-time applicability, largest-component fraction, elongation and route corridor occupancy. Add richer robustness/runtime statistics only when their scenarios are ready. This keeps the initial dashboard/report interpretable.
 
 ## 3. Parameter experiments: the sliders we want to study
 

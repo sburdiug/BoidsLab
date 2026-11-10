@@ -8,7 +8,7 @@ from .reader import iter_run, strict_json, option
 from .metrics import frame_metrics, arrival_thresholds
 from .plots import figures
 
-ANALYSIS_VERSION = "2"
+ANALYSIS_VERSION = "3"
 
 
 def write_json(path, data):
@@ -17,14 +17,16 @@ def write_json(path, data):
     temp.replace(path)
 
 
-def analyze(path, expected_steps=None):
+def analyze(path, expected_steps=None, component_radius=None):
     path = Path(path)
     meta_path = path / "metadata.json"
     has_metadata = meta_path.exists()
+    if component_radius is not None and (isinstance(component_radius, bool) or not isinstance(component_radius, (int, float)) or not math.isfinite(component_radius) or component_radius <= 0):
+        raise ValueError("component radius must be positive and finite")
     meta = {}
     # Invalidate old derived results before validation, including failed reanalysis.
     write_json(path / "validation.json", {"valid": False, "status": "analyzing"})
-    for name in ("summary.json", "metrics.csv", "plots/trajectory.png", "plots/dynamics.png"):
+    for name in ("summary.json", "metrics.csv", "plots/trajectory.png", "plots/dynamics.png", "plots/cohesion.png"):
         (path / name).unlink(missing_ok=True)
     start = time.perf_counter()
     phase = "validation"
@@ -33,7 +35,12 @@ def analyze(path, expected_steps=None):
     count = 0
     try:
         meta = strict_json(meta_path.read_text(encoding="utf-8")) if has_metadata else {}
-        if expected_steps is None and meta:
+        if component_radius is None:
+            component_radius = meta.get("analysis_settings", {}).get("component_radius_m", 1.0)
+        if isinstance(component_radius, bool) or not isinstance(component_radius, (int, float)) or not math.isfinite(component_radius) or component_radius <= 0:
+            raise ValueError("component radius must be positive and finite")
+        meta["analysis_settings"] = {"component_radius_m": component_radius}
+        if expected_steps is None and has_metadata:
             expected_steps = option(meta["argv"], "--steps", 100)
         # shortcut: standalone traces without metadata use their final summary's horizon.
         horizon = expected_steps if expected_steps is not None else strict_json((path / "stdout.json").read_text())["steps"]
@@ -56,7 +63,7 @@ def analyze(path, expected_steps=None):
                 if count == 0:
                     frame_budget = max(2, min(1000, 100_000 // max(1, len(frame["agents"])) ))
                     stride = max(1, math.ceil((math.ceil(horizon / interval) + 1) / (frame_budget - 1)))
-                rows = frame_metrics(frame)
+                rows = frame_metrics(frame, link_distance=component_radius)
                 commands = {g["uid"]: g["command"]["type"] for g in frame["groups"]}
                 for row in rows:
                     row.update(run_hash=meta.get("run_hash", "unknown"), case=meta.get("case", "standalone"),
@@ -86,13 +93,21 @@ def analyze(path, expected_steps=None):
         phase = "analysis"
         summary = strict_json((path / "stdout.json").read_text(encoding="utf-8"))
         dt = summary["legacy"]["config"]["dt"]
-        for uid, step in arrival_thresholds(frames[0], summary["events"]).items():
-            groups[str(uid)].update(time_to_90_arrived=step * dt, time_to_90_reason=None,
-                time_to_90_interval={"lower": max(0, step - 1) * dt, "upper": step * dt,
-                                    "sparse": interval > 1, "source": "state_events", "resolution": "simulation_step"})
-        result = {"analysis_version": ANALYSIS_VERSION, "groups": groups,
+        for fraction in (.5, .9, 1.0):
+            steps = arrival_thresholds(frames[0], summary["events"], fraction)
+            for uid, group in groups.items():
+                step = steps.get(int(uid))
+                reason = None if step is not None else "not_reached_by_horizon" if group["command"] in ("gather", "route") else "not_applicable"
+                interval_value = None if step is None else {"lower": max(0, step - 1) * dt, "upper": step * dt,
+                                    "sparse": interval > 1, "source": "state_events", "resolution": "simulation_step"}
+                percent = round(fraction * 100)
+                group[f"time_to_{percent}_arrived"] = None if step is None else step * dt
+                group[f"time_to_{percent}_reason"] = reason
+                group[f"time_to_{percent}_interval"] = interval_value
+        result = {"analysis_version": ANALYSIS_VERSION, "analysis_settings": meta["analysis_settings"], "groups": groups,
                   "agent_contacts": sum(e["type"] == "agent_contact" for e in summary["events"]),
-                  "obstacle_contacts": sum(e["type"] == "obstacle_contact" for e in summary["events"])}
+                  "obstacle_contacts": sum(e["type"] == "obstacle_contact" for e in summary["events"]),
+                  "first_contact_time": min((e["time"] for e in summary["events"] if e["type"] in ("agent_contact", "obstacle_contact")), default=None)}
         meta["analysis_seconds"] = time.perf_counter() - start
         phase = "plotting"
         plot_start = time.perf_counter()

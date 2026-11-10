@@ -18,11 +18,13 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def run(manifest, binary, output, timeout, trace_every=1):
+def run(manifest, binary, output, timeout, trace_every=1, component_radius=1.0):
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be positive and finite")
     if isinstance(trace_every, bool) or not isinstance(trace_every, int) or trace_every < 1:
         raise ValueError("trace_every must be a positive integer")
+    if isinstance(component_radius, bool) or not isinstance(component_radius, (int, float)) or not math.isfinite(component_radius) or component_radius <= 0:
+        raise ValueError("component radius must be positive and finite")
     manifest, binary, output = (Path(p).resolve() for p in (manifest, binary, output))
     cases = list(load_manifest(manifest))
     binary_hash = digest(binary.read_bytes())
@@ -38,13 +40,14 @@ def run(manifest, binary, output, timeout, trace_every=1):
     for index, case in enumerate(cases, 1):
         folder = output / f"{index:04d}-{case['name']}"
         folder.mkdir()
-        write_json(folder / "metadata.json", {"case": case["name"], "params": case["params"], "status": "not_started"})
+        write_json(folder / "metadata.json", {"case": case["name"], "params": case["params"], "status": "not_started", "analysis_settings": {"component_radius_m": component_radius}})
     failed = False
     for index, case in enumerate(cases, 1):
         folder = output / f"{index:04d}-{case['name']}"
         args = [str(binary), *case["args"]]
         meta = {"case": case["name"], "params": case["params"], "argv": args, "binary_sha256": binary_hash,
             "git_commit": revision, "git_dirty": dirty, "binary_origin": "unknown", "analysis_version": ANALYSIS_VERSION,
+            "analysis_settings": {"component_radius_m": component_radius},
             "python": sys.version, "platform": platform.platform(), "numpy": numpy.__version__, "matplotlib": matplotlib.__version__,
             "started_utc": datetime.now(timezone.utc).isoformat(), "status": "preparing", "exit_code": None}
         write_json(folder / "metadata.json", meta)

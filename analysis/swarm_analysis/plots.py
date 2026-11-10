@@ -77,3 +77,18 @@ def figures(frames, rows, directory):
         ax.set_ylabel(title); ax.grid(alpha=.2)
         if ax.get_legend_handles_labels()[0]: ax.legend(fontsize=7)
     axes[-1].set_xlabel("Time (s)"); fig.tight_layout(); fig.savefig(directory/"dynamics.png",dpi=140); plt.close(fig)
+    fig, axes = plt.subplots(3, 1, figsize=(9, 8), sharex=True)
+    for uid in groups:
+        data = [r for r in rows if r["group_uid"] == uid]
+        for ax, key in zip(axes, ("largest_component_fraction", "elongation", "route_inside_fraction")):
+            if any(r[key] is not None for r in data):
+                ax.plot([r["time"] for r in data], [r[key] if r[key] is not None else math.nan for r in data], label=f"G{uid}")
+    for ax, title in zip(axes, ("Largest component fraction", "Elongation", "Living agents in corridor")):
+        ax.set_ylabel(title); ax.grid(alpha=.2)
+        if ax.get_legend_handles_labels()[0]: ax.legend(fontsize=7)
+    axes[0].set_ylim(0, 1.05)
+    axes[2].set_ylim(0, 1.05)
+    axes[-1].set_xlabel("Time (s)")
+    title = f"Swarm geometry (link distance {rows[-1]['component_link_distance_m']:g} m)" if rows else "Swarm geometry"
+    fig.suptitle(title)
+    fig.tight_layout(); fig.savefig(directory/"cohesion.png", dpi=140); plt.close(fig)
