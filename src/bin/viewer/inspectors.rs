@@ -38,27 +38,19 @@ pub(super) fn inspector(world: &Simulation, selected: Option<usize>, x: f32) {
             17.0,
             TEXT,
         );
-        label(
-            &format!("Ground m/s {:.3}, {:.3}", v[0], v[1]),
-            x + 16.0,
-            223.0,
-            17.0,
-            TEXT,
-        );
-        label(
-            &format!("Air m/s {:.3}, {:.3}", air[0], air[1]),
-            x + 16.0,
-            248.0,
-            17.0,
-            TEXT,
-        );
-        label(
-            &format!("Wind m/s {:.3}, {:.3}", wind[0], wind[1]),
-            x + 16.0,
-            273.0,
-            17.0,
-            TEXT,
-        );
+        for (name, value, y) in [
+            ("Ground", v, 223.0),
+            ("Air", air, 248.0),
+            ("Wind", wind, 273.0),
+        ] {
+            label(
+                &format!("{name} m/s {:.3}, {:.3}", value[0], value[1]),
+                x + 16.0,
+                y,
+                17.0,
+                TEXT,
+            );
+        }
         let count = (0..world.agents().len())
             .filter(|&j| world.perceives(id, j))
             .count();
@@ -129,34 +121,14 @@ pub(super) fn object_inspector(object: SceneObject, x: f32) {
         SceneObject::Noise(_) => "Measurement noise",
     };
     label(name, x + 16.0, 146.0, 19.0, TEXT);
-    label(
-        &format!("Center {:.2}, {:.2}", center[0], center[1]),
-        x + 16.0,
-        176.0,
-        16.0,
-        TEXT,
-    );
-    label(
-        &format!("Width {:.2}", area.width()),
-        x + 16.0,
-        202.0,
-        16.0,
-        TEXT,
-    );
-    label(
-        &format!("Length {:.2}", area.length()),
-        x + 16.0,
-        228.0,
-        16.0,
-        TEXT,
-    );
-    label(
-        &format!("Angle {:.1} deg", area.angle().to_degrees()),
-        x + 16.0,
-        254.0,
-        16.0,
-        TEXT,
-    );
+    for (text, y) in [
+        (format!("Center {:.2}, {:.2}", center[0], center[1]), 176.0),
+        (format!("Width {:.2}", area.width()), 202.0),
+        (format!("Length {:.2}", area.length()), 228.0),
+        (format!("Angle {:.1} deg", area.angle().to_degrees()), 254.0),
+    ] {
+        label(&text, x + 16.0, y, 16.0, TEXT);
+    }
     if let SceneObject::Wind(w) = object {
         label(
             &format!("Speed {:.3}", w.speed()),

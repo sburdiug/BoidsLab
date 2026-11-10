@@ -53,6 +53,7 @@ impl Simulation {
                 .map(|g| g.config().neighbor_radius)
                 .fold(self.config.neighbor_radius, f64::max);
             let grid = SpatialIndex::new(&observed, view);
+            let mut neighbors = Vec::new();
             for (i, agent) in next.iter_mut().enumerate() {
                 if agent.state != AgentState::Terminated {
                     let config = self.agent_config(i);
@@ -73,11 +74,7 @@ impl Simulation {
                     {
                         continue;
                     }
-                    let mut neighbors = grid.neighbors(i, &observed, config.neighbor_radius);
-                    neighbors.retain(|&j| {
-                        self.agent_group(i).interaction(observed[j].group_id)
-                            != super::Interaction::Ignore
-                    });
+                    self.visible_neighbors(i, &observed, &grid, &mut neighbors);
                     if let Command::Spread { spacing } = command
                         && neighbors.iter().any(|&j| {
                             self.reacts_to(i, j)
@@ -171,6 +168,19 @@ impl Simulation {
 }
 
 impl Simulation {
+    fn visible_neighbors(
+        &self,
+        index: usize,
+        observed: &[super::Agent],
+        grid: &SpatialIndex,
+        neighbors: &mut Vec<usize>,
+    ) {
+        let group = self.agent_group(index);
+        grid.neighbors(index, observed, group.config().neighbor_radius, neighbors);
+        neighbors
+            .retain(|&j| group.interaction(observed[j].group_id) != super::Interaction::Ignore);
+    }
+
     fn reconcile_controlled_requests(
         &self,
         observed: &[super::Agent],
@@ -178,6 +188,7 @@ impl Simulation {
         grid: &SpatialIndex,
     ) -> Result<(), SimulationError> {
         let dt = self.config.dt;
+        let mut neighbors = Vec::new();
         for _ in 0..3 {
             let mut changed = false;
             for i in 0..next.len() {
@@ -192,14 +203,7 @@ impl Simulation {
                 {
                     continue;
                 }
-                let neighbors = grid
-                    .neighbors(i, observed, config.neighbor_radius)
-                    .into_iter()
-                    .filter(|&j| {
-                        self.agent_group(i).interaction(observed[j].group_id)
-                            != super::Interaction::Ignore
-                    })
-                    .collect::<Vec<_>>();
+                self.visible_neighbors(i, observed, grid, &mut neighbors);
                 let safe =
                     |velocity: [f64; 2], all: &[super::Agent]| -> Result<bool, SimulationError> {
                         let ground = add(velocity, next[i].drift);

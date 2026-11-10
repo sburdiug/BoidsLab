@@ -37,8 +37,8 @@ impl SpatialIndex {
         .then(|| (cell[0].floor() as i64, cell[1].floor() as i64))
     }
 
-    pub(super) fn candidates(&self, point: [f64; 2], agents: &[Agent]) -> Vec<usize> {
-        let mut result = Vec::new();
+    pub(super) fn candidates(&self, point: [f64; 2], agents: &[Agent], result: &mut Vec<usize>) {
+        result.clear();
         if let Some(cells) = &self.cells
             && let Some((x, y)) = self.key(point)
         {
@@ -50,7 +50,6 @@ impl SpatialIndex {
                     }
                 }
             }
-            result.sort_unstable();
         } else {
             result.extend(
                 agents
@@ -60,14 +59,20 @@ impl SpatialIndex {
                     .map(|(i, _)| i),
             );
         }
-        result
     }
 
-    pub(super) fn neighbors(&self, index: usize, agents: &[Agent], radius: f64) -> Vec<usize> {
+    pub(super) fn neighbors(
+        &self,
+        index: usize,
+        agents: &[Agent],
+        radius: f64,
+        result: &mut Vec<usize>,
+    ) {
         let point = agents[index].position;
-        let mut result = self.candidates(point, agents);
+        self.candidates(point, agents, result);
         result.retain(|&i| i != index && norm(sub(point, agents[i].position)) <= radius);
-        result
+        // Preserve accumulation order, sorting only neighbors that survive the distance check.
+        result.sort_unstable();
     }
 }
 
@@ -85,6 +90,7 @@ mod tests {
             agents[5].state = AgentState::Terminated;
             for radius in [0.1, 1.0, 6.0] {
                 let grid = SpatialIndex::new(&agents, radius);
+                let mut actual = Vec::new();
                 for (i, agent) in agents.iter().enumerate() {
                     let expected: Vec<_> = agents
                         .iter()
@@ -96,7 +102,8 @@ mod tests {
                         })
                         .map(|(j, _)| j)
                         .collect();
-                    assert_eq!(grid.neighbors(i, &agents, radius), expected);
+                    grid.neighbors(i, &agents, radius, &mut actual);
+                    assert_eq!(actual, expected);
                 }
             }
         }
@@ -120,6 +127,7 @@ mod tests {
                 .map(|p| Agent::new(*p, [1.0, 0.0]).unwrap())
                 .collect();
             let grid = SpatialIndex::new(&agents, 1.0);
+            let mut actual = Vec::new();
             for (i, a) in agents.iter().enumerate() {
                 let expected: Vec<_> = agents
                     .iter()
@@ -127,7 +135,8 @@ mod tests {
                     .filter(|(j, b)| *j != i && norm(sub(a.position, b.position)) <= 1.0)
                     .map(|(j, _)| j)
                     .collect();
-                assert_eq!(grid.neighbors(i, &agents, 1.0), expected);
+                grid.neighbors(i, &agents, 1.0, &mut actual);
+                assert_eq!(actual, expected);
             }
         }
     }

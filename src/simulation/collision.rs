@@ -41,15 +41,15 @@ pub(super) fn resolve_motion(
         },
     );
     let mut pairs = Vec::new();
+    let mut candidates = Vec::new();
     for (i, agent) in agents.iter().enumerate() {
         if agent.state == AgentState::Terminated {
             continue;
         }
-        for j in grid.candidates(agent.position, agents) {
-            if j > i {
-                pairs.push((i, j));
-            }
-        }
+        grid.candidates(agent.position, agents, &mut candidates);
+        candidates.retain(|&j| j > i);
+        candidates.sort_unstable();
+        pairs.extend(candidates.iter().map(|&j| (i, j)));
     }
     resolve_pairs(world, agents, &pairs)
 }
@@ -281,8 +281,9 @@ mod tests {
                 for _ in 0..6 {
                     let mut world = Simulation::seeded(config, 60, 3.0, seed).unwrap();
                     world.groups[0].command = command;
-                    resolve_motion(&world, &mut indexed).unwrap();
-                    resolve_pairs(&world, &mut brute, &pairs).unwrap();
+                    let indexed_events = resolve_motion(&world, &mut indexed).unwrap();
+                    let brute_events = resolve_pairs(&world, &mut brute, &pairs).unwrap();
+                    assert_eq!(format!("{indexed_events:?}"), format!("{brute_events:?}"));
                     assert_eq!(indexed, brute, "dt={dt}, seed={seed}");
                 }
             }

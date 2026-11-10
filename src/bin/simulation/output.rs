@@ -72,6 +72,17 @@ fn spawn(out: &mut impl Write, s: SpawnConfig) -> Result<(), Box<dyn Error>> {
     )?;
     Ok(())
 }
+fn rectangle(out: &mut impl Write, r: &Rectangle) -> Result<(), Box<dyn Error>> {
+    let [x, y] = r.center();
+    write!(
+        out,
+        "{{\"center\":[{x},{y}],\"width\":{},\"height\":{},\"angle_degrees\":{}}}",
+        r.length(),
+        r.width(),
+        r.angle().to_degrees()
+    )?;
+    Ok(())
+}
 fn scene(
     out: &mut impl Write,
     obstacles: &[Rectangle],
@@ -80,28 +91,14 @@ fn scene(
 ) -> Result<(), Box<dyn Error>> {
     write!(out, "{{\"rectangle\":")?;
     if let Some(r) = obstacles.first() {
-        let [x, y] = r.center();
-        write!(
-            out,
-            "{{\"center\":[{x},{y}],\"width\":{},\"height\":{},\"angle_degrees\":{}}}",
-            r.length(),
-            r.width(),
-            r.angle().to_degrees()
-        )?;
+        rectangle(out, r)?;
     } else {
         write!(out, "null")?;
     }
     write!(out, ",\"rectangles\":[")?;
     for (i, r) in obstacles.iter().enumerate() {
-        let [x, y] = r.center();
-        write!(
-            out,
-            "{}{{\"center\":[{x},{y}],\"width\":{},\"height\":{},\"angle_degrees\":{}}}",
-            if i == 0 { "" } else { "," },
-            r.length(),
-            r.width(),
-            r.angle().to_degrees()
-        )?;
+        write!(out, "{}", if i == 0 { "" } else { "," })?;
+        rectangle(out, r)?;
     }
     write!(out, "],\"wind\":[")?;
     for (i, z) in wind.iter().enumerate() {
@@ -332,11 +329,7 @@ pub(super) fn write_snapshot(
     )?;
     write!(out, ",\"agents\":[")?;
     for (id, agent) in world.agents().iter().enumerate() {
-        let state = match agent.state() {
-            AgentState::Moving => "moving",
-            AgentState::Arrived => "arrived",
-            AgentState::Terminated => "terminated",
-        };
+        let state = state(agent.state());
         let [x, y] = agent.position();
         let [vx, vy] = agent.velocity();
         let [avx, avy] = agent.air_velocity();
