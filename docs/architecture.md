@@ -11,7 +11,7 @@ All paths below are relative to `src/`.
 | `simulation.rs` | Public reexports, simulation state and read-only accessors |
 | `simulation/config.rs`, `simulation/agent.rs`, `simulation/error.rs` | Parameters and validation, agent state, public errors |
 | `simulation/spawn.rs` | Construction and seeded initial placement |
-| `simulation/groups.rs` | Stable IDs, directed perception policies, group data and color |
+| `simulation/groups.rs` | Group indices (shift on deletion), directed perception policies, group data and color |
 | `simulation/profiles.rs` | Profile hash, atomic profile edits and seeded scene restart |
 | `simulation/events.rs` | Step-indexed scene, command and lifecycle event history |
 | `simulation/scene_preset.rs` | Versioned environment presets and atomic application |
